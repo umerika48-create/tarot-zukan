@@ -203,6 +203,21 @@
   .jentry-del { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px; align-self:flex-start; }
   .jentry-del:hover { color: var(--rose); }
 
+  /* 時期読み */
+  .timing-sec { max-width: 760px; margin-bottom: 34px; }
+  .timing-h { font-family:'Fraunces',serif; font-size:16px; margin-bottom:12px; color:var(--gold); }
+  .timing-table { border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .timing-row { display:grid; grid-template-columns: 140px 150px 1fr; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); align-items:center; }
+  .timing-row:last-child { border-bottom:none; }
+  .timing-row.head { background: var(--surface-hover); color:var(--text-dim); font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+  .timing-row .tc-name { font-family:'Fraunces',serif; font-size:14.5px; }
+  .timing-row .tc-term { color:var(--gold); font-size:13px; }
+  .timing-row .tc-feature { color:var(--text-dim); font-size:13px; }
+  @media (max-width: 560px) {
+    .timing-row { grid-template-columns: 1fr; gap:2px; padding:12px 14px; }
+    .timing-row.head { display:none; }
+  }
+
   ::-webkit-scrollbar { width:8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius:8px; }
 </style>
@@ -213,6 +228,7 @@
     <div class="rail-title">TAROT</div>
     <button class="rail-btn active" data-view="dict"><span class="ic">&#128214;</span>図鑑</button>
     <button class="rail-btn" data-view="draw"><span class="ic">&#127183;</span>1枚引く</button>
+    <button class="rail-btn" data-view="timing"><span class="ic">&#8987;</span>時期読み</button>
     <button class="rail-btn" data-view="journal"><span class="ic">&#128221;</span>記録</button>
   </nav>
 
@@ -241,9 +257,13 @@
 
     <!-- 1枚引く VIEW -->
     <div class="view hidden" id="view-draw">
+      <div class="chiprow" id="drawModeRow" style="justify-content:center;">
+        <div class="chip active" data-mode="reading">カードを引く</div>
+        <div class="chip" data-mode="timing">時期を引く</div>
+      </div>
       <div class="draw-wrap">
-        <div class="draw-lead">今日のあなたへの1枚</div>
-        <div class="draw-sub">静かに一呼吸してから、カードをタップしてください。</div>
+        <div class="draw-lead" id="drawLead">今日のあなたへの1枚</div>
+        <div class="draw-sub" id="drawSub">静かに一呼吸してから、カードをタップしてください。</div>
         <div class="deck-stage">
           <div class="deck-back" id="deckBack"><span class="glyph">&#10022;</span></div>
         </div>
@@ -254,14 +274,32 @@
         <div class="result-detail" id="resultDetail" style="display:none;">
           <div class="modal-eyebrow" id="rEyebrow"></div>
           <div class="modal-title" id="rTitle"></div>
-          <div class="sec"><div class="sec-h up" id="rMeaningLabel">意味</div><p id="rMeaning"></p></div>
-          <div class="sec"><div class="sec-h lv">恋愛での視点</div><p id="rLove"></p></div>
+          <div class="sec" id="rMeaningSec"><div class="sec-h up" id="rMeaningLabel">意味</div><p id="rMeaning"></p></div>
+          <div class="sec" id="rLoveSec"><div class="sec-h lv">恋愛での視点</div><p id="rLove"></p></div>
+          <div class="sec" id="rTimingTermSec" style="display:none;"><div class="sec-h up">時期の目安</div><p id="rTimingTerm"></p></div>
+          <div class="sec" id="rTimingFeatureSec" style="display:none;"><div class="sec-h lv">時期としての特徴</div><p id="rTimingFeature"></p></div>
           <textarea class="note-box" id="drawNote" placeholder="今日の気づきや、心に浮かんだことをメモしておきましょう（任意）"></textarea>
           <div class="draw-actions">
             <button class="btn primary" id="saveDrawBtn">記録に残す</button>
             <button class="btn" id="redrawBtn">もう一度引く</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 時期読み VIEW -->
+    <div class="view hidden" id="view-timing">
+      <div class="timing-sec">
+        <div class="timing-h">スート別の時期感（小アルカナ・数札）</div>
+        <div class="timing-table" id="timingSuitTable"></div>
+      </div>
+      <div class="timing-sec">
+        <div class="timing-h">コートカードの時期感（ペイジ／ナイト／クイーン／キング）</div>
+        <div class="timing-table" id="timingCourtTable"></div>
+      </div>
+      <div class="timing-sec">
+        <div class="timing-h">大アルカナの時期感</div>
+        <div class="timing-table" id="timingMajorTable"></div>
       </div>
     </div>
 
@@ -290,6 +328,7 @@
 </div>
 
 <script src="cards.js"></script>
+<script src="timing.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

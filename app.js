@@ -8,10 +8,11 @@ let currentSuit = "all";
 let currentQuery = "";
 
 // ---------- ナビゲーション ----------
-const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), journal: document.getElementById("view-journal") };
+const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), journal: document.getElementById("view-journal") };
 const titles = {
   dict: ["タロット図鑑", "78枚のカードの意味を、いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
+  timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
 };
 document.querySelectorAll(".rail-btn").forEach(btn => {
@@ -26,6 +27,7 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
     document.getElementById("searchBox").style.visibility = (v === "dict") ? "visible" : "hidden";
     if (v === "journal") renderJournal();
     if (v === "draw") resetDraw();
+    if (v === "timing") renderTimingTables();
   });
 });
 
@@ -77,6 +79,34 @@ function rankLabel(n) {
   return String(n);
 }
 
+// ---------- 時期読み 図鑑テーブル ----------
+function renderTimingTables() {
+  const suitTbl = document.getElementById("timingSuitTable");
+  if (suitTbl.dataset.done) return;
+  suitTbl.dataset.done = "1";
+
+  let sh = `<div class="timing-row head"><div>スート</div><div>時期の目安</div><div>特徴</div></div>`;
+  ["wands","cups","swords","pentacles"].forEach(s => {
+    const t = TIMING_SUIT[s];
+    sh += `<div class="timing-row"><div class="tc-name">${SUIT_LABEL[s]}${SUIT_JA_SHORT[s]}</div><div class="tc-term">${t.term}</div><div class="tc-feature">${t.feature}</div></div>`;
+  });
+  suitTbl.innerHTML = sh;
+
+  let ch = `<div class="timing-row head"><div>カード</div><div>時期の目安</div><div>特徴</div></div>`;
+  [11,12,13,14].forEach(n => {
+    const t = TIMING_COURT[n];
+    ch += `<div class="timing-row"><div class="tc-name">${t.label}</div><div class="tc-term">${t.term}</div><div class="tc-feature">${t.feature}</div></div>`;
+  });
+  document.getElementById("timingCourtTable").innerHTML = ch;
+
+  let mh = `<div class="timing-row head"><div>カード</div><div>時期の目安</div><div>特徴</div></div>`;
+  CARDS.filter(c => c.arcana === "major").forEach(c => {
+    const t = TIMING_MAJOR[c.id];
+    mh += `<div class="timing-row"><div class="tc-name">${c.name_jp}</div><div class="tc-term">${t.term}</div><div class="tc-feature">${t.feature}</div></div>`;
+  });
+  document.getElementById("timingMajorTable").innerHTML = mh;
+}
+
 // ---------- モーダル ----------
 const modalBackdrop = document.getElementById("modalBackdrop");
 function openModal(c) {
@@ -97,6 +127,23 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackd
 
 // ---------- 1枚引く ----------
 let drawnCard = null, drawnReversed = false;
+let drawMode = "reading"; // "reading" | "timing"
+
+document.querySelectorAll("#drawModeRow .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#drawModeRow .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    drawMode = chip.dataset.mode;
+    if (drawMode === "timing") {
+      document.getElementById("drawLead").textContent = "動き出す時期を占う1枚";
+      document.getElementById("drawSub").textContent = "「これはいつ頃動く？」と思いながら、カードをタップしてください。";
+    } else {
+      document.getElementById("drawLead").textContent = "今日のあなたへの1枚";
+      document.getElementById("drawSub").textContent = "静かに一呼吸してから、カードをタップしてください。";
+    }
+    resetDraw();
+  });
+});
 
 function resetDraw() {
   drawnCard = null;
@@ -126,10 +173,26 @@ document.getElementById("deckBack").addEventListener("click", function () {
     document.getElementById("resultOrient").className = "result-orient " + (drawnReversed ? "rv" : "up");
 
     document.getElementById("rEyebrow").textContent = SUIT_LABEL[drawnCard.arcana] + " " + SUIT_JA_SHORT[drawnCard.arcana];
-    document.getElementById("rTitle").textContent = drawnCard.name_jp + (drawnReversed ? "（逆位置）" : "（正位置）");
-    document.getElementById("rMeaningLabel").textContent = drawnReversed ? "意味（逆位置）" : "意味（正位置）";
-    document.getElementById("rMeaning").textContent = drawnReversed ? drawnCard.reversed : drawnCard.upright;
-    document.getElementById("rLove").textContent = drawnCard.love;
+
+    if (drawMode === "timing") {
+      const t = getTiming(drawnCard);
+      document.getElementById("rTitle").textContent = drawnCard.name_jp;
+      document.getElementById("rMeaningSec").style.display = "none";
+      document.getElementById("rLoveSec").style.display = "none";
+      document.getElementById("rTimingTermSec").style.display = "block";
+      document.getElementById("rTimingFeatureSec").style.display = "block";
+      document.getElementById("rTimingTerm").textContent = t.term;
+      document.getElementById("rTimingFeature").textContent = t.feature;
+    } else {
+      document.getElementById("rTitle").textContent = drawnCard.name_jp + (drawnReversed ? "（逆位置）" : "（正位置）");
+      document.getElementById("rMeaningSec").style.display = "block";
+      document.getElementById("rLoveSec").style.display = "block";
+      document.getElementById("rTimingTermSec").style.display = "none";
+      document.getElementById("rTimingFeatureSec").style.display = "none";
+      document.getElementById("rMeaningLabel").textContent = drawnReversed ? "意味（逆位置）" : "意味（正位置）";
+      document.getElementById("rMeaning").textContent = drawnReversed ? drawnCard.reversed : drawnCard.upright;
+      document.getElementById("rLove").textContent = drawnCard.love;
+    }
     document.getElementById("resultDetail").style.display = "block";
   }, 900);
 });
@@ -145,7 +208,8 @@ document.getElementById("saveDrawBtn").addEventListener("click", () => {
     cardId: drawnCard.id,
     name: drawnCard.name_jp,
     reversed: drawnReversed,
-    note: note
+    note: note,
+    mode: drawMode
   });
   saveJournal(entries);
   document.getElementById("saveDrawBtn").textContent = "記録しました ✓";
@@ -178,7 +242,7 @@ function renderJournal() {
       <img src="${c.img}" class="${e.reversed ? 'reversed' : ''}" alt="${c.name_jp}">
       <div class="jentry-body">
         <div class="jentry-date">${dateStr}</div>
-        <div class="jentry-name">${e.name}<span class="jentry-orient ${e.reversed ? 'rv' : ''}">${e.reversed ? '逆位置' : '正位置'}</span></div>
+        <div class="jentry-name">${e.name}${e.mode === 'timing' ? '<span class="jentry-orient">時期読み</span>' : `<span class="jentry-orient ${e.reversed ? 'rv' : ''}">${e.reversed ? '逆位置' : '正位置'}</span>`}</div>
         ${e.note ? `<div class="jentry-note">${escapeHtml(e.note)}</div>` : ""}
       </div>
       <button class="jentry-del" title="削除" data-idx="${idx}">&times;</button>`;
