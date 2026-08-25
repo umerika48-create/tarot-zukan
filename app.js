@@ -122,8 +122,10 @@ function openModal(c) {
 
   const storyPopup = document.getElementById("mStoryPopup");
   const situationPopup = document.getElementById("mSituationPopup");
+  const placePopup = document.getElementById("mPlacePopup");
   storyPopup.classList.remove("show");
   situationPopup.classList.remove("show");
+  placePopup.classList.remove("show");
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
@@ -132,13 +134,14 @@ function openModal(c) {
     document.getElementById("mCatchWrap").style.display = "none";
   }
 
-  const hasAnyTag = c.age_range || c.story || c.current_situation;
+  const hasAnyTag = c.age_range || c.story || c.current_situation || c.place;
   if (hasAnyTag) {
     document.getElementById("mTagRow").style.display = "flex";
     document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
     document.getElementById("mAge").textContent = c.age_range || "";
     document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
     document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
+    document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
   } else {
     document.getElementById("mTagRow").style.display = "none";
   }
@@ -151,16 +154,32 @@ function openModal(c) {
     document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
     document.getElementById("mSituationText").textContent = c.current_situation;
   }
+  if (c.place) {
+    document.getElementById("mPlaceHeader").textContent = "出会いの場所：" + c.name_jp;
+    document.getElementById("mPlaceText").textContent = c.place;
+  }
 
   modalBackdrop.classList.remove("hidden");
 }
-document.getElementById("mStoryTag").addEventListener("click", () => {
+function closeAllPopups() {
+  document.getElementById("mStoryPopup").classList.remove("show");
   document.getElementById("mSituationPopup").classList.remove("show");
-  document.getElementById("mStoryPopup").classList.toggle("show");
+  document.getElementById("mPlacePopup").classList.remove("show");
+}
+document.getElementById("mStoryTag").addEventListener("click", () => {
+  const isOpen = document.getElementById("mStoryPopup").classList.contains("show");
+  closeAllPopups();
+  if (!isOpen) document.getElementById("mStoryPopup").classList.add("show");
 });
 document.getElementById("mSituationTag").addEventListener("click", () => {
-  document.getElementById("mStoryPopup").classList.remove("show");
-  document.getElementById("mSituationPopup").classList.toggle("show");
+  const isOpen = document.getElementById("mSituationPopup").classList.contains("show");
+  closeAllPopups();
+  if (!isOpen) document.getElementById("mSituationPopup").classList.add("show");
+});
+document.getElementById("mPlaceTag").addEventListener("click", () => {
+  const isOpen = document.getElementById("mPlacePopup").classList.contains("show");
+  closeAllPopups();
+  if (!isOpen) document.getElementById("mPlacePopup").classList.add("show");
 });
 document.getElementById("modalClose").addEventListener("click", () => modalBackdrop.classList.add("hidden"));
 modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.add("hidden"); });
