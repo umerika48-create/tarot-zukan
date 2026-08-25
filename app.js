@@ -10,7 +10,7 @@ let currentQuery = "";
 // ---------- ナビゲーション ----------
 const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), journal: document.getElementById("view-journal") };
 const titles = {
-  dict: ["Sakuraco★タロット図鑑", "78枚のカードの意味を、いつでも気軽に。"],
+  dict: ["タロット図鑑", "78枚のカードの意味を、いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
   timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
@@ -22,7 +22,10 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
     const v = btn.dataset.view;
     Object.values(views).forEach(el => el.classList.add("hidden"));
     views[v].classList.remove("hidden");
-    document.getElementById("pageTitle").textContent = titles[v][0];
+    document.getElementById("pageTitleText").textContent = v === "dict" ? "Sakuraco" : titles[v][0];
+    document.getElementById("pageTitleText2").style.display = v === "dict" ? "inline" : "none";
+    document.getElementById("pageTitleSparkle").style.display = v === "dict" ? "inline-block" : "none";
+    document.getElementById("pageTitleCard").style.display = v === "dict" ? "inline-block" : "none";
     document.getElementById("pageSub").textContent = titles[v][1];
     document.getElementById("searchBox").style.visibility = (v === "dict") ? "visible" : "hidden";
     if (v === "journal") renderJournal();
@@ -188,6 +191,32 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackd
 // ---------- 1枚引く ----------
 let drawnCard = null, drawnReversed = false;
 let drawMode = "reading"; // "reading" | "timing"
+let currentDeck = "tarot"; // "tarot" | "lenormand"
+
+document.querySelectorAll("#deckRow .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#deckRow .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentDeck = chip.dataset.deck;
+
+    const timingChip = document.querySelector('#drawModeRow .chip[data-mode="timing"]');
+    if (currentDeck === "lenormand") {
+      timingChip.style.display = "none";
+      if (drawMode === "timing") {
+        drawMode = "reading";
+        document.querySelectorAll("#drawModeRow .chip").forEach(c => c.classList.remove("active"));
+        document.querySelector('#drawModeRow .chip[data-mode="reading"]').classList.add("active");
+      }
+      document.getElementById("drawLead").textContent = "今日のあなたへの1枚（ルノルマン）";
+      document.getElementById("drawSub").textContent = "静かに一呼吸してから、カードをタップしてください。";
+    } else {
+      timingChip.style.display = "inline-block";
+      document.getElementById("drawLead").textContent = drawMode === "timing" ? "動き出す時期を占う1枚" : "今日のあなたへの1枚";
+      document.getElementById("drawSub").textContent = drawMode === "timing" ? "「これはいつ頃動く？」と思いながら、カードをタップしてください。" : "静かに一呼吸してから、カードをタップしてください。";
+    }
+    resetDraw();
+  });
+});
 
 document.querySelectorAll("#drawModeRow .chip").forEach(chip => {
   chip.addEventListener("click", () => {
@@ -222,10 +251,35 @@ document.getElementById("deckBack").addEventListener("click", function () {
   setTimeout(() => {
     deck.classList.remove("shuffling");
     deck.style.display = "none";
+
+    const rc = document.getElementById("resultCard");
+
+    if (currentDeck === "lenormand") {
+      drawnCard = LENORMAND_CARDS[Math.floor(Math.random() * LENORMAND_CARDS.length)];
+      drawnReversed = false;
+
+      document.getElementById("resultImg").src = drawnCard.img;
+      rc.classList.remove("reversed");
+      rc.classList.add("show");
+      document.getElementById("resultOrient").textContent = "";
+      document.getElementById("resultOrient").className = "result-orient up";
+
+      document.getElementById("rEyebrow").textContent = "ルノルマン";
+      document.getElementById("rTitle").textContent = drawnCard.name_jp;
+      document.getElementById("rMeaningSec").style.display = "block";
+      document.getElementById("rLoveSec").style.display = "block";
+      document.getElementById("rTimingTermSec").style.display = "none";
+      document.getElementById("rTimingFeatureSec").style.display = "none";
+      document.getElementById("rMeaningLabel").textContent = "意味";
+      document.getElementById("rMeaning").textContent = drawnCard.meaning;
+      document.getElementById("rLove").textContent = drawnCard.love;
+      document.getElementById("resultDetail").style.display = "block";
+      return;
+    }
+
     drawnCard = CARDS[Math.floor(Math.random() * CARDS.length)];
     drawnReversed = Math.random() < 0.5;
 
-    const rc = document.getElementById("resultCard");
     document.getElementById("resultImg").src = drawnCard.img;
     rc.classList.toggle("reversed", drawnReversed);
     rc.classList.add("show");
@@ -269,7 +323,8 @@ document.getElementById("saveDrawBtn").addEventListener("click", () => {
     name: drawnCard.name_jp,
     reversed: drawnReversed,
     note: note,
-    mode: drawMode
+    mode: drawMode,
+    deck: currentDeck
   });
   saveJournal(entries);
   document.getElementById("saveDrawBtn").textContent = "記録しました ✓";
@@ -284,7 +339,10 @@ function loadJournal() {
 function saveJournal(entries) {
   localStorage.setItem(JOURNAL_KEY, JSON.stringify(entries));
 }
-function findCard(id) { return CARDS.find(c => c.id === id); }
+function findCard(id, deck) {
+  if (deck === "lenormand") return LENORMAND_CARDS.find(c => c.id === id);
+  return CARDS.find(c => c.id === id);
+}
 
 function renderJournal() {
   const list = document.getElementById("journalList");
@@ -292,7 +350,7 @@ function renderJournal() {
   list.innerHTML = "";
   document.getElementById("journalEmpty").style.display = entries.length ? "none" : "block";
   entries.forEach((e, idx) => {
-    const c = findCard(e.cardId);
+    const c = findCard(e.cardId, e.deck);
     if (!c) return;
     const d = new Date(e.date);
     const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
@@ -302,7 +360,7 @@ function renderJournal() {
       <img src="${c.img}" class="${e.reversed ? 'reversed' : ''}" alt="${c.name_jp}">
       <div class="jentry-body">
         <div class="jentry-date">${dateStr}</div>
-        <div class="jentry-name">${e.name}${e.mode === 'timing' ? '<span class="jentry-orient">時期読み</span>' : `<span class="jentry-orient ${e.reversed ? 'rv' : ''}">${e.reversed ? '逆位置' : '正位置'}</span>`}</div>
+        <div class="jentry-name">${e.name}${e.deck === 'lenormand' ? '<span class="jentry-orient">ルノルマン</span>' : (e.mode === 'timing' ? '<span class="jentry-orient">時期読み</span>' : `<span class="jentry-orient ${e.reversed ? 'rv' : ''}">${e.reversed ? '逆位置' : '正位置'}</span>`)}</div>
         ${e.note ? `<div class="jentry-note">${escapeHtml(e.note)}</div>` : ""}
       </div>
       <button class="jentry-del" title="削除" data-idx="${idx}">&times;</button>`;
