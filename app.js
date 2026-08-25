@@ -119,8 +119,36 @@ function openModal(c) {
   document.getElementById("mUp").textContent = c.upright;
   document.getElementById("mRv").textContent = c.reversed;
   document.getElementById("mLove").textContent = c.love;
+
+  const storyPopup = document.getElementById("mStoryPopup");
+  storyPopup.classList.remove("show");
+
+  if (c.catchphrase) {
+    document.getElementById("mCatchWrap").style.display = "block";
+    document.getElementById("mCatch").textContent = c.catchphrase;
+  } else {
+    document.getElementById("mCatchWrap").style.display = "none";
+  }
+
+  if (c.age_range || c.story) {
+    document.getElementById("mTagRow").style.display = "flex";
+    document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
+    document.getElementById("mAge").textContent = c.age_range || "";
+    document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
+  } else {
+    document.getElementById("mTagRow").style.display = "none";
+  }
+
+  if (c.story) {
+    document.getElementById("mStoryHeader").textContent = "ストーリー：" + c.name_jp;
+    document.getElementById("mStoryText").textContent = c.story;
+  }
+
   modalBackdrop.classList.remove("hidden");
 }
+document.getElementById("mStoryTag").addEventListener("click", () => {
+  document.getElementById("mStoryPopup").classList.toggle("show");
+});
 document.getElementById("modalClose").addEventListener("click", () => modalBackdrop.classList.add("hidden"));
 modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackdrop.classList.add("hidden"); });

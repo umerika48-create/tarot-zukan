@@ -126,6 +126,31 @@
   .modal-title { font-family:'Fraunces',serif; font-size:28px; margin: 4px 0 2px; }
   .modal-titleen { color:var(--text-dim); font-size:13px; margin-bottom:14px; }
   .kw-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 18px; }
+
+  .catch-badge {
+    display:block; background: rgba(201,169,97,.1); border:1px solid var(--gold-dim);
+    border-radius:8px; padding:10px 14px; margin-bottom:12px;
+    font-family:'Fraunces',serif; font-style:italic; font-size:15px; color:#e8cd8f; line-height:1.5;
+  }
+  .tag-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .age-badge {
+    background: var(--surface-hover); border:1px solid var(--border); border-radius:999px;
+    padding:6px 14px; font-size:12.5px; color:var(--text-dim);
+  }
+  .story-tag {
+    background: rgba(181,97,90,.12); border:1px solid var(--rose-dim); border-radius:999px;
+    padding:6px 14px; font-size:12.5px; color:#e39a95; font-weight:700; cursor:pointer;
+    transition: all .15s ease;
+  }
+  .story-tag:hover { background: rgba(181,97,90,.22); }
+
+  .story-popup {
+    margin-top: 4px; background: var(--surface-hover); border:1px solid var(--rose-dim);
+    border-radius:10px; padding:14px 16px; display:none;
+  }
+  .story-popup.show { display:block; animation: fadein .3s ease; }
+  .story-popup .sp-h { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#e39a95; margin-bottom:6px; }
+  .story-popup p { margin:0; font-size:14px; line-height:1.7; color:var(--text); }
   .kw { background: var(--surface-hover); border:1px solid var(--border); border-radius:999px; padding:4px 11px; font-size:11.5px; color: var(--text-dim); }
   .sec { margin-bottom: 16px; }
   .sec-h { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
@@ -320,6 +345,15 @@
       <div class="modal-title" id="mTitle"></div>
       <div class="modal-titleen" id="mTitleEn"></div>
       <div class="kw-row" id="mKeywords"></div>
+      <div class="catch-badge" id="mCatchWrap" style="display:none;">&ldquo;<span id="mCatch"></span>&rdquo;</div>
+      <div class="tag-row" id="mTagRow" style="display:none;">
+        <span class="age-badge" id="mAge"></span>
+        <span class="story-tag" id="mStoryTag">ストーリー</span>
+      </div>
+      <div class="story-popup" id="mStoryPopup">
+        <div class="sp-h" id="mStoryHeader">ストーリー</div>
+        <p id="mStoryText"></p>
+      </div>
       <div class="sec"><div class="sec-h up">正位置</div><p id="mUp"></p></div>
       <div class="sec"><div class="sec-h rv">逆位置</div><p id="mRv"></p></div>
       <div class="sec"><div class="sec-h lv">恋愛での視点</div><p id="mLove"></p></div>
