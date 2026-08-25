@@ -10,7 +10,7 @@ let currentQuery = "";
 // ---------- ナビゲーション ----------
 const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), journal: document.getElementById("view-journal") };
 const titles = {
-  dict: ["タロット図鑑", "78枚のカードの意味を、いつでも気軽に。"],
+  dict: ["Sakuraco★タロット図鑑", "78枚のカードの意味を、いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
   timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
