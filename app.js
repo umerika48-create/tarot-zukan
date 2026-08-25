@@ -121,7 +121,9 @@ function openModal(c) {
   document.getElementById("mLove").textContent = c.love;
 
   const storyPopup = document.getElementById("mStoryPopup");
+  const situationPopup = document.getElementById("mSituationPopup");
   storyPopup.classList.remove("show");
+  situationPopup.classList.remove("show");
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
@@ -130,11 +132,13 @@ function openModal(c) {
     document.getElementById("mCatchWrap").style.display = "none";
   }
 
-  if (c.age_range || c.story) {
+  const hasAnyTag = c.age_range || c.story || c.current_situation;
+  if (hasAnyTag) {
     document.getElementById("mTagRow").style.display = "flex";
     document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
     document.getElementById("mAge").textContent = c.age_range || "";
     document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
+    document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
   } else {
     document.getElementById("mTagRow").style.display = "none";
   }
@@ -143,11 +147,20 @@ function openModal(c) {
     document.getElementById("mStoryHeader").textContent = "ストーリー：" + c.name_jp;
     document.getElementById("mStoryText").textContent = c.story;
   }
+  if (c.current_situation) {
+    document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
+    document.getElementById("mSituationText").textContent = c.current_situation;
+  }
 
   modalBackdrop.classList.remove("hidden");
 }
 document.getElementById("mStoryTag").addEventListener("click", () => {
+  document.getElementById("mSituationPopup").classList.remove("show");
   document.getElementById("mStoryPopup").classList.toggle("show");
+});
+document.getElementById("mSituationTag").addEventListener("click", () => {
+  document.getElementById("mStoryPopup").classList.remove("show");
+  document.getElementById("mSituationPopup").classList.toggle("show");
 });
 document.getElementById("modalClose").addEventListener("click", () => modalBackdrop.classList.add("hidden"));
 modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.add("hidden"); });
