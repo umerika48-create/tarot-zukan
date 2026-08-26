@@ -153,6 +153,17 @@ function openModal(c) {
     document.getElementById("mStoryHeader").textContent = "ストーリー：" + c.name_jp;
     document.getElementById("mStoryText").textContent = c.story;
   }
+  const chipRow = document.getElementById("mSymbolChipRow");
+  chipRow.innerHTML = "";
+  if (c.symbols && c.symbols.length) {
+    c.symbols.forEach((s, i) => {
+      const chip = document.createElement("span");
+      chip.className = "symbol-chip";
+      chip.textContent = s.label;
+      chip.addEventListener("click", () => openSymbolDetail(c, i));
+      chipRow.appendChild(chip);
+    });
+  }
   if (c.current_situation) {
     document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
     document.getElementById("mSituationText").textContent = c.current_situation;
@@ -186,6 +197,19 @@ document.getElementById("mPlaceTag").addEventListener("click", () => {
 });
 document.getElementById("modalClose").addEventListener("click", () => modalBackdrop.classList.add("hidden"));
 modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.add("hidden"); });
+
+// ---------- シンボル詳細ポップアップ ----------
+const symbolDetailBackdrop = document.getElementById("symbolDetailBackdrop");
+function openSymbolDetail(card, index) {
+  const s = card.symbols[index];
+  document.getElementById("symbolDetailEyebrow").textContent = card.name_jp + " のシンボル";
+  document.getElementById("symbolDetailTitle").textContent = s.title;
+  document.getElementById("symbolDetailText").textContent = s.text;
+  symbolDetailBackdrop.classList.remove("hidden");
+}
+document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
+symbolDetailBackdrop.addEventListener("click", (e) => { if (e.target === symbolDetailBackdrop) symbolDetailBackdrop.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackdrop.classList.add("hidden"); });
 
 // ---------- 1枚引く ----------

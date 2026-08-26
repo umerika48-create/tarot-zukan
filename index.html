@@ -153,6 +153,25 @@
   .story-popup.show { display:block; animation: fadein .3s ease; }
   .story-popup .sp-h { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#e39a95; margin-bottom:6px; }
   .story-popup p { margin:0; font-size:14px; line-height:1.7; color:var(--text); }
+
+  .symbol-chip-row { display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
+  .symbol-chip {
+    background: var(--surface); border:1px solid var(--rose-dim); border-radius:999px;
+    padding:6px 13px; font-size:12px; color:#e39a95; cursor:pointer; transition: all .15s ease;
+  }
+  .symbol-chip:hover { background: rgba(181,97,90,.15); }
+
+  .symbol-detail-backdrop {
+    position:fixed; inset:0; background: rgba(10,9,14,.72); backdrop-filter: blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:60;
+  }
+  .symbol-detail-backdrop.hidden { display:none; }
+  .symbol-detail-modal {
+    background: var(--surface); border:1px solid var(--rose-dim); border-radius:16px;
+    max-width: 460px; width:100%; max-height:80vh; overflow-y:auto; padding: 26px 28px; position:relative;
+  }
+  .symbol-detail-title { font-family:'Kosugi Maru',sans-serif; font-size:20px; color:var(--text); margin-bottom:12px; }
+  .symbol-detail-modal p { margin:0; font-size:14.5px; line-height:1.75; color:var(--text); }
   .kw { background: var(--surface-hover); border:1px solid var(--border); border-radius:999px; padding:4px 11px; font-size:11.5px; color: var(--text-dim); }
   .sec { margin-bottom: 16px; }
   .sec-h { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
@@ -378,11 +397,21 @@
       <div class="story-popup" id="mStoryPopup">
         <div class="sp-h" id="mStoryHeader">ストーリー</div>
         <p id="mStoryText"></p>
+        <div class="symbol-chip-row" id="mSymbolChipRow"></div>
       </div>
       <div class="sec"><div class="sec-h up">正位置</div><p id="mUp"></p></div>
       <div class="sec"><div class="sec-h rv">逆位置</div><p id="mRv"></p></div>
       <div class="sec"><div class="sec-h lv">恋愛での視点</div><p id="mLove"></p></div>
     </div>
+  </div>
+</div>
+
+<div class="symbol-detail-backdrop hidden" id="symbolDetailBackdrop">
+  <div class="symbol-detail-modal">
+    <button class="modal-close" id="symbolDetailClose">&times;</button>
+    <div class="sp-h" id="symbolDetailEyebrow">シンボルの意味</div>
+    <div class="symbol-detail-title" id="symbolDetailTitle"></div>
+    <p id="symbolDetailText"></p>
   </div>
 </div>
 
