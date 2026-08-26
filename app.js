@@ -8,11 +8,12 @@ let currentSuit = "all";
 let currentQuery = "";
 
 // ---------- ナビゲーション ----------
-const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), journal: document.getElementById("view-journal") };
+const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
 const titles = {
   dict: ["タロット図鑑", "78枚のカードの意味を、いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
   timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
+  about: ["タロットとは", "カードの成り立ちを、少しだけ覗いてみましょう。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
 };
 document.querySelectorAll(".rail-btn").forEach(btn => {
@@ -109,6 +110,17 @@ function renderTimingTables() {
   });
   document.getElementById("timingMajorTable").innerHTML = mh;
 }
+
+// ---------- タロットとは ----------
+document.querySelectorAll("#aboutModeRow .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#aboutModeRow .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    const level = chip.dataset.level;
+    document.getElementById("aboutTextKids").style.display = level === "kids" ? "block" : "none";
+    document.getElementById("aboutTextAdult").style.display = level === "adult" ? "block" : "none";
+  });
+});
 
 // ---------- モーダル ----------
 const modalBackdrop = document.getElementById("modalBackdrop");

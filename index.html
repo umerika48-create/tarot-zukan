@@ -264,6 +264,11 @@
     .timing-row.head { display:none; }
   }
 
+  /* タロットとは */
+  .about-text { max-width: 640px; }
+  .about-text p { font-size:15px; line-height:1.9; color:var(--text); margin:0 0 18px; }
+  .about-text strong { color: var(--gold); font-weight:700; }
+
   ::-webkit-scrollbar { width:8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius:8px; }
 </style>
@@ -275,6 +280,7 @@
     <button class="rail-btn active" data-view="dict"><span class="ic">&#128214;</span>図鑑</button>
     <button class="rail-btn" data-view="draw"><span class="ic">&#127183;</span>1枚引く</button>
     <button class="rail-btn" data-view="timing"><span class="ic">&#8987;</span>時期読み</button>
+    <button class="rail-btn" data-view="about"><span class="ic">&#128220;</span>タロットとは</button>
     <button class="rail-btn" data-view="journal"><span class="ic">&#128221;</span>記録</button>
   </nav>
 
@@ -359,6 +365,27 @@
       <div class="timing-sec">
         <div class="timing-h">大アルカナの時期感</div>
         <div class="timing-table" id="timingMajorTable"></div>
+      </div>
+    </div>
+
+    <!-- タロットとは VIEW -->
+    <div class="view hidden" id="view-about">
+      <div class="chiprow" id="aboutModeRow" style="justify-content:center;">
+        <div class="chip" data-level="kids">簡単</div>
+        <div class="chip active" data-level="adult">大人</div>
+      </div>
+      <div class="about-text" id="aboutTextKids" style="display:none;">
+        <p>タロットは、今から約600年前、イタリアで生まれたカードです。</p>
+        <p>はじめは「トランプみたいな遊びのカード」として使われていました。絵がきれいで、貴族の間で人気のゲームだったんです。</p>
+        <p>それから時間がたって、フランスなどで「このカードの絵には、深い意味があるんじゃないか？」と考える人たちが出てきました。そこから、今のような「占いのカード」として使われるようになっていきました。</p>
+        <p>今、さくらこが使っているタロットカード（ライダー・ウェイト版）は、1909年にイギリスで作られたものです。約100年以上前に作られたカードが、今も世界中で愛され続けているんです。</p>
+        <p>タロットは「未来を言い当てる魔法の道具」というより、<strong>「自分の心の中を映し出してくれる鏡」</strong>のようなもの。カードの絵をヒントに、自分でも気づいていなかった気持ちに気づかせてくれます。</p>
+      </div>
+      <div class="about-text" id="aboutTextAdult">
+        <p>タロットの起源は15世紀のイタリア北部にさかのぼります。当時は占いの道具ではなく、貴族階級の間で楽しまれていた「トリオンフィ」と呼ばれるカードゲームでした。手描きで作られた豪華なカードは、権力や富の象徴でもありました。</p>
+        <p>タロットが神秘的な意味を持つようになったのは18世紀のフランスから。オカルティストたちがカードの図像に古代エジプトやカバラなどの象徴体系を重ね合わせ、「タロットには秘教的な叡智が込められている」という解釈が広まっていきました。この流れの中心にいたのが、フランスの神秘思想家エリファス・レヴィです。</p>
+        <p>現在もっとも広く使われている「ライダー・ウェイト版」は、1909年にイギリスで、神秘主義結社ゴールデン・ドーンのメンバーだったアーサー・エドワード・ウェイトの監修のもと、画家パメラ・コールマン・スミスによって描かれました。それまでのタロットは小アルカナ（数札）に具体的な絵が描かれていないことが多かったのですが、このデッキでは56枚すべてに情景が描かれ、直感的に読み解きやすいデザインになったことで、以降のスタンダードになりました。</p>
+        <p>つまりタロットは、遊戯用のカード → 神秘思想と結びついた象徴体系 → 直感的な自己洞察のツール、と姿を変えながら、600年近く生き続けてきた文化そのものなんです。</p>
       </div>
     </div>
 
