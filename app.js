@@ -9,12 +9,13 @@ let currentQuery = "";
 let currentDictDeck = "tarot"; // "tarot" | "lenormand" | "rune"
 
 // ---------- ナビゲーション ----------
-const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
+const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
 const titles = {
   dict: ["占いカード図鑑", "タロット・ルノルマン・ルーン。いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
   timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
   spread: ["スプレッド", "目的に合わせた展開方法で、深く読み解きましょう。"],
+  combo: ["組み合わせ引き", "複数のデッキを組み合わせて、多角的に読み解きます。"],
   about: ["タロットとは", "カードの成り立ちを、少しだけ覗いてみましょう。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
 };
@@ -637,6 +638,95 @@ function openSpreadDetail(pos, card, index) {
 document.getElementById("spreadDetailClose").addEventListener("click", () => spreadDetailBackdrop.classList.add("hidden"));
 spreadDetailBackdrop.addEventListener("click", (e) => { if (e.target === spreadDetailBackdrop) spreadDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") spreadDetailBackdrop.classList.add("hidden"); });
+
+// ---------- 組み合わせ引き ----------
+document.querySelectorAll("#comboModeRow .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#comboModeRow .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    document.getElementById("comboTwoPicker").style.display = chip.dataset.combo === "two" ? "block" : "none";
+    document.getElementById("comboBoard").innerHTML = "";
+  });
+});
+
+function setupComboDeckRow(rowId, otherRowId) {
+  document.querySelectorAll(`#${rowId} .chip`).forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(`#${rowId} .chip`).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+    });
+  });
+}
+setupComboDeckRow("comboDeckARow");
+setupComboDeckRow("comboDeckBRow");
+
+function drawOneFrom(deck) {
+  const arr = spreadDeckArray(deck);
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+const DECK_LABEL = { tarot: "タロット", lenormand: "ルノルマン", rune: "ルーン" };
+
+function renderComboCard(deck, card) {
+  const wrap = document.createElement("div");
+  wrap.className = "spread-slot";
+  wrap.style.cursor = "default";
+
+  const label = document.createElement("div");
+  label.className = "slot-label";
+  label.textContent = DECK_LABEL[deck];
+  wrap.appendChild(label);
+
+  const cardBox = document.createElement("div");
+  cardBox.className = "slot-card";
+  cardBox.style.width = "150px";
+  const img = document.createElement("img");
+  img.src = card.img;
+  img.alt = spreadCardName(card);
+  cardBox.appendChild(img);
+  wrap.appendChild(cardBox);
+
+  const nameEl = document.createElement("div");
+  nameEl.className = "slot-name";
+  nameEl.style.fontSize = "13px";
+  nameEl.style.maxWidth = "160px";
+  nameEl.textContent = spreadCardName(card);
+  wrap.appendChild(nameEl);
+
+  const meaningEl = document.createElement("div");
+  meaningEl.style.cssText = "font-size:13px; line-height:1.7; color:var(--text-dim); max-width:170px; margin-top:8px; text-align:left;";
+  meaningEl.textContent = spreadCardMeaning(card);
+  wrap.appendChild(meaningEl);
+
+  return wrap;
+}
+
+document.getElementById("comboDealBtn").addEventListener("click", () => {
+  const mode = document.querySelector("#comboModeRow .chip.active").dataset.combo;
+  const board = document.getElementById("comboBoard");
+  board.innerHTML = "";
+
+  let decks;
+  if (mode === "three") {
+    decks = ["tarot", "lenormand", "rune"];
+  } else {
+    const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
+    const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
+    if (deckA === deckB) {
+      alert("2つのデッキは別々のものを選んでください。");
+      return;
+    }
+    decks = [deckA, deckB];
+  }
+
+  decks.forEach(deck => {
+    const card = drawOneFrom(deck);
+    board.appendChild(renderComboCard(deck, card));
+  });
+});
+
+document.getElementById("comboResetBtn").addEventListener("click", () => {
+  document.getElementById("comboBoard").innerHTML = "";
+});
 
 // ---------- init ----------
 renderGrid();

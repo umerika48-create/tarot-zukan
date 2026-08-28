@@ -327,6 +327,7 @@
     <button class="rail-btn" data-view="draw"><span class="ic">&#127183;</span>1枚引く</button>
     <button class="rail-btn" data-view="timing"><span class="ic">&#8987;</span>時期読み</button>
     <button class="rail-btn" data-view="spread"><span class="ic">&#127183;</span>スプレッド</button>
+    <button class="rail-btn" data-view="combo"><span class="ic">&#128260;</span>組み合わせ引き</button>
     <button class="rail-btn" data-view="about"><span class="ic">&#128220;</span>タロットとは</button>
     <button class="rail-btn" data-view="journal"><span class="ic">&#128221;</span>記録</button>
   </nav>
@@ -456,6 +457,36 @@
         <button class="btn" id="spreadResetBtn">リセット</button>
       </div>
       <div class="spread-board" id="spreadBoard" style="margin-top:22px;"></div>
+    </div>
+
+    <!-- 組み合わせ引き VIEW -->
+    <div class="view hidden" id="view-combo">
+      <div class="chiprow" id="comboModeRow">
+        <div class="chip active" data-combo="three">3枚引き（タロット・ルノルマン・ルーン）</div>
+        <div class="chip" data-combo="two">2枚引き（デッキを組み合わせる）</div>
+      </div>
+
+      <div id="comboTwoPicker" style="display:none; margin-top:14px;">
+        <div class="sub" style="margin-bottom:8px;">1つ目のデッキ</div>
+        <div class="chiprow" id="comboDeckARow">
+          <div class="chip active" data-deck="tarot">タロット</div>
+          <div class="chip" data-deck="lenormand">ルノルマン</div>
+          <div class="chip" data-deck="rune">ルーン</div>
+        </div>
+        <div class="sub" style="margin:12px 0 8px;">2つ目のデッキ</div>
+        <div class="chiprow" id="comboDeckBRow">
+          <div class="chip" data-deck="tarot">タロット</div>
+          <div class="chip active" data-deck="lenormand">ルノルマン</div>
+          <div class="chip" data-deck="rune">ルーン</div>
+        </div>
+      </div>
+
+      <div class="draw-actions" style="justify-content:flex-start; margin-top:18px;">
+        <button class="btn primary" id="comboDealBtn">引く</button>
+        <button class="btn" id="comboResetBtn">リセット</button>
+      </div>
+
+      <div class="layout-flow" id="comboBoard" style="margin-top:24px;"></div>
     </div>
 
     <!-- タロットとは VIEW -->
