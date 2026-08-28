@@ -45,7 +45,7 @@ document.querySelectorAll("#dictDeckRow .chip").forEach(chip => {
     document.querySelectorAll("#dictDeckRow .chip").forEach(c => c.classList.remove("active"));
     chip.classList.add("active");
     currentDictDeck = chip.dataset.deck;
-    document.getElementById("chipRow").style.display = currentDictDeck === "tarot" ? "flex" : "none";
+    document.getElementById("chipRow").style.display = (currentDictDeck === "tarot" || currentDictDeck === "marseille") ? "flex" : "none";
     currentSuit = "all";
     document.querySelectorAll("#chipRow .chip").forEach(c => c.classList.remove("active"));
     const allChip = document.querySelector('#chipRow .chip[data-suit="all"]');
@@ -67,6 +67,7 @@ document.getElementById("searchBox").addEventListener("input", (e) => {
 });
 
 function getDictDeckArray() {
+  if (currentDictDeck === "marseille") return MARSEILLE_CARDS;
   if (currentDictDeck === "lenormand") return LENORMAND_CARDS;
   if (currentDictDeck === "rune") return RUNE_CARDS;
   return CARDS;
@@ -77,7 +78,7 @@ function renderGrid() {
   const q = currentQuery.toLowerCase();
   const source = getDictDeckArray();
   const filtered = source.filter(c => {
-    const suitOk = currentDictDeck !== "tarot" || currentSuit === "all" || c.arcana === currentSuit;
+    const suitOk = (currentDictDeck !== "tarot" && currentDictDeck !== "marseille") || currentSuit === "all" || c.arcana === currentSuit;
     const qOk = !q || c.name_jp.toLowerCase().includes(q) || c.name_en.toLowerCase().includes(q) ||
       c.keywords.some(k => k.toLowerCase().includes(q));
     return suitOk && qOk;
@@ -101,8 +102,9 @@ function renderGrid() {
 function cardNumLabel(c) {
   if (c.deck === "lenormand") return "LENORMAND " + c.id.replace("l","").padStart(2,"0");
   if (c.deck === "rune") return "RUNE " + c.id.replace("r","").padStart(2,"0");
-  if (c.arcana === "major") return "MAJOR " + String(c.number).padStart(2, "0");
-  return SUIT_LABEL[c.arcana] + " " + rankLabel(c.number);
+  const prefix = c.deck === "marseille" ? "MARSEILLE " : "";
+  if (c.arcana === "major") return prefix + "MAJOR " + String(c.number).padStart(2, "0");
+  return prefix + SUIT_LABEL[c.arcana] + " " + rankLabel(c.number);
 }
 function rankLabel(n) {
   if (n === 1) return "A"; if (n === 11) return "P"; if (n === 12) return "N"; if (n === 13) return "Q"; if (n === 14) return "K";
@@ -199,7 +201,7 @@ function openModal(c) {
   document.getElementById("mUpLabel").textContent = "正位置";
   document.getElementById("mRvSec").style.display = "block";
   document.getElementById("mLoveSec").style.display = "block";
-  document.getElementById("mEyebrow").textContent = SUIT_LABEL[c.arcana] + " " + SUIT_JA_SHORT[c.arcana];
+  document.getElementById("mEyebrow").textContent = SUIT_LABEL[c.arcana] + " " + SUIT_JA_SHORT[c.arcana] + (c.deck === "marseille" ? "（マルセイユ版）" : "");
   document.getElementById("mUp").textContent = c.upright;
   document.getElementById("mRv").textContent = c.reversed;
   document.getElementById("mLove").textContent = c.love;
@@ -305,14 +307,16 @@ document.querySelectorAll("#deckRow .chip").forEach(chip => {
     currentDeck = chip.dataset.deck;
 
     const timingChip = document.querySelector('#drawModeRow .chip[data-mode="timing"]');
-    if (currentDeck === "lenormand" || currentDeck === "rune") {
+    if (currentDeck === "lenormand" || currentDeck === "rune" || currentDeck === "marseille") {
       timingChip.style.display = "none";
       if (drawMode === "timing") {
         drawMode = "reading";
         document.querySelectorAll("#drawModeRow .chip").forEach(c => c.classList.remove("active"));
         document.querySelector('#drawModeRow .chip[data-mode="reading"]').classList.add("active");
       }
-      document.getElementById("drawLead").textContent = currentDeck === "lenormand" ? "今日のあなたへの1枚（ルノルマン）" : "今日のあなたへの1枚（ルーン）";
+      document.getElementById("drawLead").textContent =
+        currentDeck === "lenormand" ? "今日のあなたへの1枚（ルノルマン）" :
+        currentDeck === "marseille" ? "今日のあなたへの1枚（マルセイユ版）" : "今日のあなたへの1枚（ルーン）";
       document.getElementById("drawSub").textContent = "静かに一呼吸してから、カードをタップしてください。";
     } else {
       timingChip.style.display = "inline-block";
@@ -383,7 +387,8 @@ document.getElementById("deckBack").addEventListener("click", function () {
       return;
     }
 
-    drawnCard = CARDS[Math.floor(Math.random() * CARDS.length)];
+    const tarotSource = currentDeck === "marseille" ? MARSEILLE_CARDS : CARDS;
+    drawnCard = tarotSource[Math.floor(Math.random() * tarotSource.length)];
     drawnReversed = Math.random() < 0.5;
 
     document.getElementById("resultImg").src = drawnCard.img;
@@ -392,7 +397,7 @@ document.getElementById("deckBack").addEventListener("click", function () {
     document.getElementById("resultOrient").textContent = drawnReversed ? "逆位置" : "正位置";
     document.getElementById("resultOrient").className = "result-orient " + (drawnReversed ? "rv" : "up");
 
-    document.getElementById("rEyebrow").textContent = SUIT_LABEL[drawnCard.arcana] + " " + SUIT_JA_SHORT[drawnCard.arcana];
+    document.getElementById("rEyebrow").textContent = SUIT_LABEL[drawnCard.arcana] + " " + SUIT_JA_SHORT[drawnCard.arcana] + (currentDeck === "marseille" ? "（マルセイユ版）" : "");
 
     if (drawMode === "timing") {
       const t = getTiming(drawnCard);
@@ -448,6 +453,7 @@ function saveJournal(entries) {
 function findCard(id, deck) {
   if (deck === "lenormand") return LENORMAND_CARDS.find(c => c.id === id);
   if (deck === "rune") return RUNE_CARDS.find(c => c.id === id);
+  if (deck === "marseille") return MARSEILLE_CARDS.find(c => c.id === id);
   return CARDS.find(c => c.id === id);
 }
 
@@ -494,6 +500,7 @@ let spreadDrawnCards = [];
 function spreadDeckArray(deck) {
   if (deck === "lenormand") return LENORMAND_CARDS;
   if (deck === "rune") return RUNE_CARDS;
+  if (deck === "marseille") return MARSEILLE_CARDS;
   return CARDS;
 }
 function spreadCardMeaning(card) {

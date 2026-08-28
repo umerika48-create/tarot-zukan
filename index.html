@@ -353,7 +353,8 @@
     <!-- 図鑑 VIEW -->
     <div class="view" id="view-dict">
       <div class="chiprow" id="dictDeckRow">
-        <div class="chip active" data-deck="tarot">タロット</div>
+        <div class="chip active" data-deck="tarot">タロット（RWS）</div>
+        <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
         <div class="chip" data-deck="lenormand">ルノルマン</div>
         <div class="chip" data-deck="rune">ルーン</div>
       </div>
@@ -372,7 +373,8 @@
     <!-- 1枚引く VIEW -->
     <div class="view hidden" id="view-draw">
       <div class="chiprow" id="deckRow" style="justify-content:center;">
-        <div class="chip active" data-deck="tarot">タロット</div>
+        <div class="chip active" data-deck="tarot">タロット（RWS）</div>
+        <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
         <div class="chip" data-deck="lenormand">ルノルマン</div>
         <div class="chip" data-deck="rune">ルーン</div>
       </div>
@@ -447,7 +449,8 @@
     <!-- スプレッド VIEW -->
     <div class="view hidden" id="view-spread">
       <div class="chiprow" id="spreadDeckRow">
-        <div class="chip active" data-deck="tarot">タロット</div>
+        <div class="chip active" data-deck="tarot">タロット（RWS）</div>
+        <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
         <div class="chip" data-deck="lenormand">ルノルマン</div>
         <div class="chip" data-deck="rune">ルーン</div>
       </div>
@@ -469,13 +472,15 @@
       <div id="comboTwoPicker" style="display:none; margin-top:14px;">
         <div class="sub" style="margin-bottom:8px;">1つ目のデッキ</div>
         <div class="chiprow" id="comboDeckARow">
-          <div class="chip active" data-deck="tarot">タロット</div>
+          <div class="chip active" data-deck="tarot">タロット（RWS）</div>
+          <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
           <div class="chip" data-deck="lenormand">ルノルマン</div>
           <div class="chip" data-deck="rune">ルーン</div>
         </div>
         <div class="sub" style="margin:12px 0 8px;">2つ目のデッキ</div>
         <div class="chiprow" id="comboDeckBRow">
-          <div class="chip" data-deck="tarot">タロット</div>
+          <div class="chip" data-deck="tarot">タロット（RWS）</div>
+          <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
           <div class="chip active" data-deck="lenormand">ルノルマン</div>
           <div class="chip" data-deck="rune">ルーン</div>
         </div>
@@ -574,6 +579,7 @@
 </div>
 
 <script src="cards.js"></script>
+<script src="marseille_cards.js"></script>
 <script src="lenormand_cards.js"></script>
 <script src="rune_cards.js"></script>
 <script src="spreads.js"></script>

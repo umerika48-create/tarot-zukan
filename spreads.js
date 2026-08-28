@@ -96,3 +96,4 @@ const SPREADS = {
                  {label:"最終結果", desc:"行き着く最終的な結果。"}] },
   ],
 };
+SPREADS.marseille = SPREADS.tarot;
