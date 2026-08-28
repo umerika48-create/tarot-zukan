@@ -9,11 +9,12 @@ let currentQuery = "";
 let currentDictDeck = "tarot"; // "tarot" | "lenormand" | "rune"
 
 // ---------- ナビゲーション ----------
-const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
+const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
 const titles = {
   dict: ["占いカード図鑑", "タロット・ルノルマン・ルーン。いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
   timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
+  spread: ["スプレッド", "目的に合わせた展開方法で、深く読み解きましょう。"],
   about: ["タロットとは", "カードの成り立ちを、少しだけ覗いてみましょう。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
 };
@@ -33,6 +34,7 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
     if (v === "journal") renderJournal();
     if (v === "draw") resetDraw();
     if (v === "timing") renderTimingTables();
+    if (v === "spread") initSpreadTab();
   });
 });
 
@@ -482,6 +484,159 @@ function renderJournal() {
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 }
+
+// ---------- スプレッド ----------
+let currentSpreadDeck = "tarot";
+let currentSpread = null;
+let spreadDrawnCards = [];
+
+function spreadDeckArray(deck) {
+  if (deck === "lenormand") return LENORMAND_CARDS;
+  if (deck === "rune") return RUNE_CARDS;
+  return CARDS;
+}
+function spreadCardMeaning(card) {
+  return card.meaning || card.upright || "";
+}
+function spreadCardName(card) {
+  if (card.deck === "rune") return card.name_en + "／" + card.name_jp;
+  return card.name_jp;
+}
+
+function renderSpreadTypeChips() {
+  const row = document.getElementById("spreadTypeRow");
+  row.innerHTML = "";
+  const list = SPREADS[currentSpreadDeck];
+  list.forEach((sp, i) => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (i === 0 ? " active" : "");
+    chip.textContent = sp.name;
+    chip.dataset.spreadId = sp.id;
+    chip.addEventListener("click", () => {
+      row.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      currentSpread = sp;
+      resetSpreadBoard();
+    });
+    row.appendChild(chip);
+  });
+  currentSpread = list[0];
+}
+
+document.querySelectorAll("#spreadDeckRow .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#spreadDeckRow .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentSpreadDeck = chip.dataset.deck;
+    renderSpreadTypeChips();
+    resetSpreadBoard();
+  });
+});
+
+function initSpreadTab() {
+  if (document.getElementById("spreadTypeRow").children.length === 0) {
+    renderSpreadTypeChips();
+    resetSpreadBoard();
+  }
+}
+
+function resetSpreadBoard() {
+  spreadDrawnCards = [];
+  const board = document.getElementById("spreadBoard");
+  board.innerHTML = "";
+  board.className = "spread-board";
+}
+
+document.getElementById("spreadDealBtn").addEventListener("click", () => {
+  if (!currentSpread) return;
+  const source = spreadDeckArray(currentSpreadDeck);
+  const pool = [...source];
+  const picked = [];
+  for (let i = 0; i < currentSpread.count && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  spreadDrawnCards = picked;
+  renderSpreadBoard();
+});
+
+document.getElementById("spreadResetBtn").addEventListener("click", resetSpreadBoard);
+
+function renderSpreadBoard() {
+  const board = document.getElementById("spreadBoard");
+  const layout = currentSpread.layout;
+  board.className = "spread-board layout-" + layout;
+  board.innerHTML = "";
+
+  const positions = currentSpread.positions;
+  const n = positions.length;
+
+  positions.forEach((pos, i) => {
+    const card = spreadDrawnCards[i];
+    const slot = document.createElement("div");
+    slot.className = "spread-slot";
+
+    if (layout === "celtic") {
+      const coords = [
+        {x:230,y:180},{x:230,y:180,rot:1},{x:230,y:40},{x:230,y:320},
+        {x:70,y:180},{x:390,y:180},
+        {x:520,y:390},{x:520,y:270},{x:520,y:150},{x:520,y:30}
+      ];
+      const c = coords[i] || {x:0,y:0};
+      slot.style.left = c.x + "px";
+      slot.style.top = c.y + "px";
+      if (c.rot) slot.style.transform = "rotate(90deg)";
+    }
+    if (layout === "horoscope") {
+      const R = 220, cx = 280, cy = 280;
+      const angle = (i * 30 - 90) * Math.PI / 180;
+      slot.style.left = (cx + R * Math.cos(angle) - 39) + "px";
+      slot.style.top = (cy + R * Math.sin(angle) - 60) + "px";
+    }
+
+    const label = document.createElement("div");
+    label.className = "slot-label";
+    label.textContent = (n <= 12 ? (i+1) + " " : "") + pos.label;
+    slot.appendChild(label);
+
+    const cardBox = document.createElement("div");
+    cardBox.className = "slot-card" + (card ? "" : " empty");
+    if (card) {
+      const img = document.createElement("img");
+      img.src = card.img;
+      img.alt = spreadCardName(card);
+      cardBox.appendChild(img);
+    } else {
+      cardBox.textContent = "?";
+    }
+    slot.appendChild(cardBox);
+
+    if (n <= 12) {
+      const nameEl = document.createElement("div");
+      nameEl.className = "slot-name";
+      nameEl.textContent = card ? spreadCardName(card) : "";
+      slot.appendChild(nameEl);
+    }
+
+    if (card) {
+      slot.addEventListener("click", () => openSpreadDetail(pos, card, i+1));
+    }
+
+    board.appendChild(slot);
+  });
+}
+
+const spreadDetailBackdrop = document.getElementById("spreadDetailBackdrop");
+function openSpreadDetail(pos, card, index) {
+  document.getElementById("spreadDetailPos").textContent = index + " ｜ " + pos.label;
+  document.getElementById("spreadDetailTitle").textContent = spreadCardName(card);
+  document.getElementById("spreadDetailPosDesc").textContent = pos.desc;
+  document.getElementById("spreadDetailCardMeaning").textContent = spreadCardMeaning(card);
+  spreadDetailBackdrop.classList.remove("hidden");
+}
+document.getElementById("spreadDetailClose").addEventListener("click", () => spreadDetailBackdrop.classList.add("hidden"));
+spreadDetailBackdrop.addEventListener("click", (e) => { if (e.target === spreadDetailBackdrop) spreadDetailBackdrop.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") spreadDetailBackdrop.classList.add("hidden"); });
 
 // ---------- init ----------
 renderGrid();
