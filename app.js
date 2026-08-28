@@ -11,7 +11,7 @@ let currentDictDeck = "tarot"; // "tarot" | "lenormand" | "rune"
 // ---------- ナビゲーション ----------
 const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
 const titles = {
-  dict: ["カード図鑑", "タロット・ルノルマン・ルーン。いつでも気軽に。"],
+  dict: ["占いカード図鑑", "タロット・ルノルマン・ルーン。いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
   timing: ["時期読み", "カードが示す、物事が動くタイミングの目安。"],
   about: ["タロットとは", "カードの成り立ちを、少しだけ覗いてみましょう。"],
