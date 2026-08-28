@@ -78,7 +78,8 @@ function renderGrid() {
   const q = currentQuery.toLowerCase();
   const source = getDictDeckArray();
   const filtered = source.filter(c => {
-    const suitOk = (currentDictDeck !== "tarot" && currentDictDeck !== "marseille") || currentSuit === "all" || c.arcana === currentSuit;
+    const suitOk = (currentDictDeck !== "tarot" && currentDictDeck !== "marseille") || currentSuit === "all"
+      || (currentSuit === "court" ? (c.arcana !== "major" && c.number >= 11 && c.number <= 14) : c.arcana === currentSuit);
     const qOk = !q || c.name_jp.toLowerCase().includes(q) || c.name_en.toLowerCase().includes(q) ||
       c.keywords.some(k => k.toLowerCase().includes(q));
     return suitOk && qOk;
