@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sakuraco✦タロット図鑑 | さくらこ</title>
+<title>Sakuraco✦カード図鑑 | さくらこ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -276,7 +276,7 @@
 <body>
 <div class="app">
   <nav class="rail">
-    <div class="rail-title">TAROT</div>
+    <div class="rail-title">CARD</div>
     <button class="rail-btn active" data-view="dict"><span class="ic">&#128214;</span>図鑑</button>
     <button class="rail-btn" data-view="draw"><span class="ic">&#127183;</span>1枚引く</button>
     <button class="rail-btn" data-view="timing"><span class="ic">&#8987;</span>時期読み</button>
@@ -290,7 +290,7 @@
         <h1 id="pageTitle">
           <span id="pageTitleText">Sakuraco</span>
           <svg class="logo-sparkle" id="pageTitleSparkle" viewBox="-24 -24 48 48"><path fill="var(--gold)" d="M0,-22 C2,-6 6,-2 22,0 C6,2 2,6 0,22 C-2,6 -6,2 -22,0 C-6,-2 -2,-6 0,-22 Z"/></svg>
-          <span id="pageTitleText2">タロット図鑑</span>
+          <span id="pageTitleText2">カード図鑑</span>
           <svg class="logo-card" id="pageTitleCard" viewBox="-20 -22 40 44">
             <rect x="-14" y="-20" width="28" height="40" rx="4" fill="none" stroke="var(--gold)" stroke-width="2.2" transform="rotate(-8)"/>
             <rect x="-14" y="-20" width="28" height="40" rx="4" fill="none" stroke="var(--gold)" stroke-width="2.2" transform="rotate(8)"/>
@@ -304,6 +304,11 @@
 
     <!-- 図鑑 VIEW -->
     <div class="view" id="view-dict">
+      <div class="chiprow" id="dictDeckRow">
+        <div class="chip active" data-deck="tarot">タロット</div>
+        <div class="chip" data-deck="lenormand">ルノルマン</div>
+        <div class="chip" data-deck="rune">ルーン</div>
+      </div>
       <div class="chiprow" id="chipRow">
         <div class="chip active" data-suit="all">すべて</div>
         <div class="chip" data-suit="major">大アルカナ</div>
@@ -321,6 +326,7 @@
       <div class="chiprow" id="deckRow" style="justify-content:center;">
         <div class="chip active" data-deck="tarot">タロット</div>
         <div class="chip" data-deck="lenormand">ルノルマン</div>
+        <div class="chip" data-deck="rune">ルーン</div>
       </div>
       <div class="chiprow" id="drawModeRow" style="justify-content:center;">
         <div class="chip active" data-mode="reading">カードを引く</div>
@@ -354,17 +360,39 @@
 
     <!-- 時期読み VIEW -->
     <div class="view hidden" id="view-timing">
-      <div class="timing-sec">
-        <div class="timing-h">スート別の時期感（小アルカナ・数札）</div>
-        <div class="timing-table" id="timingSuitTable"></div>
+      <div class="chiprow" id="timingDeckRow">
+        <div class="chip active" data-deck="tarot">タロット</div>
+        <div class="chip" data-deck="lenormand">ルノルマン</div>
+        <div class="chip" data-deck="rune">ルーン</div>
       </div>
-      <div class="timing-sec">
-        <div class="timing-h">コートカードの時期感（ペイジ／ナイト／クイーン／キング）</div>
-        <div class="timing-table" id="timingCourtTable"></div>
+
+      <div id="timingTarotContent">
+        <div class="timing-sec">
+          <div class="timing-h">スート別の時期感（小アルカナ・数札）</div>
+          <div class="timing-table" id="timingSuitTable"></div>
+        </div>
+        <div class="timing-sec">
+          <div class="timing-h">コートカードの時期感（ペイジ／ナイト／クイーン／キング）</div>
+          <div class="timing-table" id="timingCourtTable"></div>
+        </div>
+        <div class="timing-sec">
+          <div class="timing-h">大アルカナの時期感</div>
+          <div class="timing-table" id="timingMajorTable"></div>
+        </div>
       </div>
-      <div class="timing-sec">
-        <div class="timing-h">大アルカナの時期感</div>
-        <div class="timing-table" id="timingMajorTable"></div>
+
+      <div id="timingLenormandContent" style="display:none;">
+        <div class="timing-sec">
+          <div class="timing-h">ルノルマン36枚の時期感</div>
+          <div class="timing-table" id="timingLenormandTable"></div>
+        </div>
+      </div>
+
+      <div id="timingRuneContent" style="display:none;">
+        <div class="timing-sec">
+          <div class="timing-h">ルーン24文字の時期感</div>
+          <div class="timing-table" id="timingRuneTable"></div>
+        </div>
       </div>
     </div>
 
@@ -426,9 +454,9 @@
         <p id="mStoryText"></p>
         <div class="symbol-chip-row" id="mSymbolChipRow"></div>
       </div>
-      <div class="sec"><div class="sec-h up">正位置</div><p id="mUp"></p></div>
-      <div class="sec"><div class="sec-h rv">逆位置</div><p id="mRv"></p></div>
-      <div class="sec"><div class="sec-h lv">恋愛での視点</div><p id="mLove"></p></div>
+      <div class="sec" id="mUpSec"><div class="sec-h up" id="mUpLabel">正位置</div><p id="mUp"></p></div>
+      <div class="sec" id="mRvSec"><div class="sec-h rv">逆位置</div><p id="mRv"></p></div>
+      <div class="sec" id="mLoveSec"><div class="sec-h lv">恋愛での視点</div><p id="mLove"></p></div>
     </div>
   </div>
 </div>
@@ -444,6 +472,7 @@
 
 <script src="cards.js"></script>
 <script src="lenormand_cards.js"></script>
+<script src="rune_cards.js"></script>
 <script src="timing.js"></script>
 <script src="app.js"></script>
 </body>
