@@ -689,10 +689,12 @@ function renderComboCard(deck, card) {
   const cardBox = document.createElement("div");
   cardBox.className = "slot-card";
   cardBox.style.width = "150px";
+  cardBox.style.cursor = "zoom-in";
   const img = document.createElement("img");
   img.src = card.img;
   img.alt = spreadCardName(card);
   cardBox.appendChild(img);
+  cardBox.addEventListener("click", () => openImageZoom(img.src, img.alt));
   wrap.appendChild(cardBox);
 
   const nameEl = document.createElement("div");
@@ -737,6 +739,31 @@ document.getElementById("comboDealBtn").addEventListener("click", () => {
 document.getElementById("comboResetBtn").addEventListener("click", () => {
   document.getElementById("comboBoard").innerHTML = "";
 });
+
+// ---------- 画像拡大表示 ----------
+const imageZoomBackdrop = document.getElementById("imageZoomBackdrop");
+function openImageZoom(src, alt) {
+  document.getElementById("imageZoomImg").src = src;
+  document.getElementById("imageZoomImg").alt = alt || "";
+  imageZoomBackdrop.classList.remove("hidden");
+}
+document.getElementById("imageZoomClose").addEventListener("click", () => imageZoomBackdrop.classList.add("hidden"));
+imageZoomBackdrop.addEventListener("click", () => imageZoomBackdrop.classList.add("hidden"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") imageZoomBackdrop.classList.add("hidden"); });
+
+document.getElementById("zoomBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const img = document.getElementById("modalImg");
+  openImageZoom(img.src, img.alt);
+});
+
+// 1枚引く：引いた結果のカード画像も拡大できるように
+document.getElementById("resultCard").addEventListener("click", () => {
+  const img = document.getElementById("resultImg");
+  if (img.src) openImageZoom(img.src, img.alt);
+});
+
+// 組み合わせ引き：カード画像クリックで拡大
 
 // ---------- init ----------
 renderGrid();
