@@ -203,6 +203,15 @@
   .draw-lead { font-family:'Kosugi Maru',sans-serif; font-size:20px; margin-bottom:6px; }
   .draw-sub { color:var(--text-dim); font-size:13.5px; margin-bottom: 30px; }
   .deck-stage { width:180px; height:308px; position:relative; margin-bottom: 28px; perspective: 1000px; }
+
+  .combo-deck-row { display:flex; gap:20px; flex-wrap:wrap; margin-top:18px; }
+  .combo-deck-slot { width:130px; height:222px; position:relative; }
+  .combo-deck-slot .deck-back { width:100%; height:100%; }
+  .combo-deck-slot .deck-label {
+    text-align:center; margin-top:8px; font-size:12px; color:var(--text-dim);
+    font-family:'DM Mono',monospace; letter-spacing:.05em;
+  }
+  .combo-deck-slot .result-card { width:130px; }
   .deck-back {
     width:100%; height:100%; border-radius:14px; cursor:pointer;
     background:
@@ -508,8 +517,10 @@
         </div>
       </div>
 
+      <div class="draw-lead" id="comboLead" style="margin-top:20px;">今日のあなたへのメッセージ</div>
+      <div class="draw-sub" id="comboSub">静かに一呼吸してから、カードをタップしてください。</div>
+      <div class="combo-deck-row" id="comboDeckStage"></div>
       <div class="draw-actions" style="justify-content:flex-start; margin-top:18px;">
-        <button class="btn primary" id="comboDealBtn">引く</button>
         <button class="btn" id="comboResetBtn">リセット</button>
       </div>
 

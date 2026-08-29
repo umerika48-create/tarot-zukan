@@ -36,6 +36,7 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
     if (v === "draw") resetDraw();
     if (v === "timing") renderTimingTables();
     if (v === "spread") initSpreadTab();
+    if (v === "combo") { document.getElementById("comboDeckStage").style.display = "flex"; renderComboDeckStage(); }
   });
 });
 
@@ -650,20 +651,53 @@ spreadDetailBackdrop.addEventListener("click", (e) => { if (e.target === spreadD
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") spreadDetailBackdrop.classList.add("hidden"); });
 
 // ---------- 組み合わせ引き ----------
+function getComboDecks() {
+  const mode = document.querySelector("#comboModeRow .chip.active").dataset.combo;
+  if (mode === "three") return ["tarot", "lenormand", "rune"];
+  const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
+  const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
+  return [deckA, deckB];
+}
+
+function renderComboDeckStage() {
+  document.getElementById("comboBoard").innerHTML = "";
+  const decks = getComboDecks();
+  const stage = document.getElementById("comboDeckStage");
+  stage.innerHTML = "";
+  decks.forEach((deck, i) => {
+    const slot = document.createElement("div");
+    slot.className = "combo-deck-slot";
+    const back = document.createElement("div");
+    back.className = "deck-back";
+    back.innerHTML = '<span class="glyph">&#10022;</span>';
+    back.addEventListener("click", () => drawComboDecks());
+    slot.appendChild(back);
+    const label = document.createElement("div");
+    label.className = "deck-label";
+    label.textContent = DECK_LABEL[deck];
+    slot.appendChild(label);
+    stage.appendChild(slot);
+  });
+}
+
 document.querySelectorAll("#comboModeRow .chip").forEach(chip => {
   chip.addEventListener("click", () => {
     document.querySelectorAll("#comboModeRow .chip").forEach(c => c.classList.remove("active"));
     chip.classList.add("active");
     document.getElementById("comboTwoPicker").style.display = chip.dataset.combo === "two" ? "block" : "none";
-    document.getElementById("comboBoard").innerHTML = "";
+    renderComboDeckStage();
   });
 });
 
-function setupComboDeckRow(rowId, otherRowId) {
+function setupComboDeckRow(rowId) {
   document.querySelectorAll(`#${rowId} .chip`).forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll(`#${rowId} .chip`).forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
+      const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
+      const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
+      if (deckA === deckB) return; // wait for the user to pick two different decks before refreshing
+      renderComboDeckStage();
     });
   });
 }
@@ -674,7 +708,7 @@ function drawOneFrom(deck) {
   const arr = spreadDeckArray(deck);
   return arr[Math.floor(Math.random() * arr.length)];
 }
-const DECK_LABEL = { tarot: "タロット", lenormand: "ルノルマン", rune: "ルーン" };
+const DECK_LABEL = { tarot: "タロット（RWS）", marseille: "タロット（マルセイユ）", lenormand: "ルノルマン", rune: "ルーン" };
 
 function renderComboCard(deck, card) {
   const wrap = document.createElement("div");
@@ -712,11 +746,12 @@ function renderComboCard(deck, card) {
   return wrap;
 }
 
-document.getElementById("comboDealBtn").addEventListener("click", () => {
-  const mode = document.querySelector("#comboModeRow .chip.active").dataset.combo;
-  const board = document.getElementById("comboBoard");
-  board.innerHTML = "";
+function drawComboDecks() {
+  const stage = document.getElementById("comboDeckStage");
+  if (stage.dataset.drawn) return;
+  stage.dataset.drawn = "1";
 
+  const mode = document.querySelector("#comboModeRow .chip.active").dataset.combo;
   let decks;
   if (mode === "three") {
     decks = ["tarot", "lenormand", "rune"];
@@ -725,19 +760,31 @@ document.getElementById("comboDealBtn").addEventListener("click", () => {
     const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
     if (deckA === deckB) {
       alert("2つのデッキは別々のものを選んでください。");
+      stage.dataset.drawn = "";
       return;
     }
     decks = [deckA, deckB];
   }
 
-  decks.forEach(deck => {
-    const card = drawOneFrom(deck);
-    board.appendChild(renderComboCard(deck, card));
-  });
-});
+  stage.querySelectorAll(".deck-back").forEach(b => b.classList.add("shuffling"));
+
+  setTimeout(() => {
+    stage.style.display = "none";
+    const board = document.getElementById("comboBoard");
+    board.innerHTML = "";
+    decks.forEach(deck => {
+      const card = drawOneFrom(deck);
+      board.appendChild(renderComboCard(deck, card));
+    });
+  }, 900);
+}
 
 document.getElementById("comboResetBtn").addEventListener("click", () => {
   document.getElementById("comboBoard").innerHTML = "";
+  const stage = document.getElementById("comboDeckStage");
+  stage.style.display = "flex";
+  stage.dataset.drawn = "";
+  renderComboDeckStage();
 });
 
 // ---------- 画像拡大表示 ----------
