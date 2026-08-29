@@ -224,7 +224,7 @@
     80% { transform: rotate(3deg) translateX(3px); }
   }
   .deck-back.flipping { transform: rotateY(90deg); }
-  .result-card { width:180px; display:none; flex-direction:column; align-items:center; margin-bottom: 10px; cursor:zoom-in; }
+  .result-card { width:180px; display:none; flex-direction:column; align-items:center; cursor:zoom-in; position:absolute; top:0; left:0; }
   .result-card.show { display:flex; animation: fadein .5s ease; }
   @keyframes fadein { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
   .result-card img { width:100%; border-radius:12px; box-shadow: 0 16px 44px rgba(0,0,0,.55); }
@@ -409,10 +409,10 @@
         <div class="draw-sub" id="drawSub">静かに一呼吸してから、カードをタップしてください。</div>
         <div class="deck-stage">
           <div class="deck-back" id="deckBack"><span class="glyph">&#10022;</span></div>
-        </div>
-        <div class="result-card" id="resultCard">
-          <img id="resultImg" src="" alt="">
-          <div class="result-orient" id="resultOrient"></div>
+          <div class="result-card" id="resultCard">
+            <img id="resultImg" src="" alt="">
+            <div class="result-orient" id="resultOrient"></div>
+          </div>
         </div>
         <div class="result-detail" id="resultDetail" style="display:none;">
           <div class="modal-eyebrow" id="rEyebrow"></div>
