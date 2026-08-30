@@ -342,6 +342,56 @@
   .spread-detail-modal p { margin:0 0 14px; font-size:14px; line-height:1.75; color:var(--text); }
   .spread-detail-modal p:last-child { margin-bottom:0; }
 
+  /* ===== モバイル対応 ===== */
+  @media (max-width: 720px) {
+    .app { flex-direction: column; }
+
+    .rail {
+      width: 100%; height: auto; flex-direction: row; flex-shrink: 0;
+      padding: 8px 6px; gap: 6px; overflow-x: auto;
+      border-right: none; border-top: 1px solid var(--border);
+      order: 2; /* bottom tab bar */
+      position: sticky; bottom: 0; z-index: 40;
+    }
+    .rail-title { display: none; }
+    .rail-btn {
+      width: auto; min-width: 58px; flex: 1 0 auto; padding: 8px 6px; font-size: 10px;
+    }
+    .rail-btn .ic { font-size: 16px; }
+
+    .main { order: 1; }
+    .topbar { padding: 16px 16px 12px; flex-direction: column; align-items: stretch; }
+    .brand h1 { font-size: 20px; }
+    .search-box { width: 100%; }
+
+    .view { padding: 14px 16px 90px; }
+
+    .grid { grid-template-columns: repeat(auto-fill, minmax(104px,1fr)); gap:10px; }
+
+    .modal { max-width: 100%; }
+    .modal-img img { max-width: 160px; }
+
+    .deck-stage, .result-card { width: 140px !important; }
+    .deck-stage { height: 240px; }
+
+    .combo-deck-row { gap: 12px; }
+    .combo-deck-slot { width: 100px; height: 172px; }
+    .combo-deck-slot .result-card { width: 100px !important; }
+
+    /* スプレッド：固定座標レイアウトは横スクロールで対応 */
+    .layout-celtic, .layout-horoscope {
+      transform: scale(0.62); transform-origin: top left;
+      width: 166%; /* compensate for the scale so scroll container sizes correctly */
+    }
+    .spread-board { overflow-x: auto; }
+    .layout-grid3 { grid-template-columns: repeat(3, 74px); gap: 10px; }
+    .layout-grand { grid-template-columns: repeat(9, 32px); gap: 4px; }
+    .layout-grand .slot-card { width: 32px; }
+
+    .about-text { max-width: 100%; }
+    .timing-row { grid-template-columns: 100px 90px 1fr; font-size: 12px; }
+  }
+
   ::-webkit-scrollbar { width:8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius:8px; }
 </style>
