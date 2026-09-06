@@ -97,3 +97,4 @@ const SPREADS = {
   ],
 };
 SPREADS.marseille = SPREADS.tarot;
+SPREADS.heart_oracle = SPREADS.rune;
