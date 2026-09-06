@@ -853,30 +853,35 @@ function openCourseDetail(course) {
   course.program.forEach(item => {
     const row = document.createElement("div");
     row.className = "course-program-item";
+
+    let descHtml = item.desc;
+    if (item.labels && item.labels.length) {
+      item.labels.forEach((label, idx) => {
+        if (descHtml.includes(label.title)) {
+          descHtml = descHtml.replace(
+            label.title,
+            `<span class="inline-glossary-label" data-label-idx="${idx}">${label.title}</span>`
+          );
+        }
+      });
+    }
+
     row.innerHTML = `
       <div class="course-program-time">${item.time}</div>
       <div class="course-program-body">
         <div class="cp-title">${item.title}</div>
-        <div class="cp-desc">${item.desc}</div>
+        <div class="cp-desc">${descHtml}</div>
       </div>`;
+
+    if (item.labels && item.labels.length) {
+      row.querySelectorAll(".inline-glossary-label").forEach(span => {
+        const idx = Number(span.dataset.labelIdx);
+        span.addEventListener("click", () => openCourseGlossary(item.labels[idx]));
+      });
+    }
+
     program.appendChild(row);
   });
-
-  const glossaryWrap = document.getElementById("courseGlossaryWrap");
-  const glossaryRow = document.getElementById("courseGlossaryRow");
-  glossaryRow.innerHTML = "";
-  if (course.glossary && course.glossary.length) {
-    glossaryWrap.style.display = "block";
-    course.glossary.forEach(term => {
-      const chip = document.createElement("span");
-      chip.className = "course-glossary-chip";
-      chip.textContent = term.label;
-      chip.addEventListener("click", () => openCourseGlossary(term));
-      glossaryRow.appendChild(chip);
-    });
-  } else {
-    glossaryWrap.style.display = "none";
-  }
 
   const memos = loadCourseMemos();
   document.getElementById("courseMemoBox").value = memos[course.id] || "";
