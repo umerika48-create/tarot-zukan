@@ -379,6 +379,20 @@
   .course-memo-wrap { border-top:1px solid var(--border); padding-top:16px; }
   .course-memo-status { font-size:11px; color:var(--text-dim); margin-top:6px; height:14px; }
 
+  .course-glossary-wrap { margin-bottom: 20px; }
+  .course-glossary-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .course-glossary-chip {
+    background: var(--surface); border:1px solid var(--rose-dim); border-radius:999px;
+    padding:7px 14px; font-size:12.5px; color:#e39a95; cursor:pointer; transition: all .15s ease;
+  }
+  .course-glossary-chip:hover { background: rgba(181,97,90,.15); }
+
+  .course-glossary-backdrop {
+    position:fixed; inset:0; background: rgba(10,9,14,.72); backdrop-filter: blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:69;
+  }
+  .course-glossary-backdrop.hidden { display:none; }
+
   /* ===== モバイル対応 ===== */
   @media (max-width: 720px) {
     .app { flex-direction: column; }
@@ -688,6 +702,15 @@
   </div>
 </div>
 
+<div class="course-glossary-backdrop hidden" id="courseGlossaryBackdrop">
+  <div class="symbol-detail-modal">
+    <button class="modal-close" id="courseGlossaryClose">&times;</button>
+    <div class="sp-h" id="courseGlossaryEyebrow">用語解説</div>
+    <div class="symbol-detail-title" id="courseGlossaryTitle"></div>
+    <p id="courseGlossaryText" style="white-space:pre-wrap;"></p>
+  </div>
+</div>
+
 <div class="course-detail-backdrop hidden" id="courseDetailBackdrop">
   <div class="course-detail-modal">
     <button class="modal-close" id="courseDetailClose">&times;</button>
@@ -695,6 +718,10 @@
     <div class="course-detail-title" id="courseDetailTitle"></div>
     <p id="courseDetailSubtitle" class="course-detail-subtitle"></p>
     <div class="course-program" id="courseProgram"></div>
+    <div class="course-glossary-wrap" id="courseGlossaryWrap" style="display:none;">
+      <div class="sec-h lv">用語解説</div>
+      <div class="course-glossary-row" id="courseGlossaryRow"></div>
+    </div>
     <div class="course-memo-wrap">
       <div class="sec-h up">メモ</div>
       <textarea class="note-box" id="courseMemoBox" placeholder="気づいたこと、次回への改善点などを自由にメモできます"></textarea>

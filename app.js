@@ -862,6 +862,22 @@ function openCourseDetail(course) {
     program.appendChild(row);
   });
 
+  const glossaryWrap = document.getElementById("courseGlossaryWrap");
+  const glossaryRow = document.getElementById("courseGlossaryRow");
+  glossaryRow.innerHTML = "";
+  if (course.glossary && course.glossary.length) {
+    glossaryWrap.style.display = "block";
+    course.glossary.forEach(term => {
+      const chip = document.createElement("span");
+      chip.className = "course-glossary-chip";
+      chip.textContent = term.label;
+      chip.addEventListener("click", () => openCourseGlossary(term));
+      glossaryRow.appendChild(chip);
+    });
+  } else {
+    glossaryWrap.style.display = "none";
+  }
+
   const memos = loadCourseMemos();
   document.getElementById("courseMemoBox").value = memos[course.id] || "";
   document.getElementById("courseMemoStatus").textContent = "";
@@ -869,9 +885,18 @@ function openCourseDetail(course) {
   courseDetailBackdrop.classList.remove("hidden");
 }
 
+const courseGlossaryBackdrop = document.getElementById("courseGlossaryBackdrop");
+function openCourseGlossary(term) {
+  document.getElementById("courseGlossaryTitle").textContent = term.title;
+  document.getElementById("courseGlossaryText").textContent = term.text;
+  courseGlossaryBackdrop.classList.remove("hidden");
+}
+document.getElementById("courseGlossaryClose").addEventListener("click", () => courseGlossaryBackdrop.classList.add("hidden"));
+courseGlossaryBackdrop.addEventListener("click", (e) => { if (e.target === courseGlossaryBackdrop) courseGlossaryBackdrop.classList.add("hidden"); });
+
 document.getElementById("courseDetailClose").addEventListener("click", () => courseDetailBackdrop.classList.add("hidden"));
 courseDetailBackdrop.addEventListener("click", (e) => { if (e.target === courseDetailBackdrop) courseDetailBackdrop.classList.add("hidden"); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") courseDetailBackdrop.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { courseDetailBackdrop.classList.add("hidden"); courseGlossaryBackdrop.classList.add("hidden"); } });
 
 let courseMemoTimer = null;
 document.getElementById("courseMemoBox").addEventListener("input", (e) => {
