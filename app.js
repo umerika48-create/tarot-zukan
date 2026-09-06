@@ -9,7 +9,7 @@ let currentQuery = "";
 let currentDictDeck = "tarot"; // "tarot" | "lenormand" | "rune"
 
 // ---------- ナビゲーション ----------
-const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), journal: document.getElementById("view-journal") };
+const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), courses: document.getElementById("view-courses"), journal: document.getElementById("view-journal") };
 const titles = {
   dict: ["占いカード図鑑", "タロット・ルノルマン・ルーン。いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
@@ -17,6 +17,7 @@ const titles = {
   spread: ["スプレッド", "目的に合わせた展開方法で、深く読み解きましょう。"],
   combo: ["組み合わせ引き", "複数のデッキを組み合わせて、多角的に読み解きます。"],
   about: ["タロットとは", "カードの成り立ちを、少しだけ覗いてみましょう。"],
+  courses: ["講座", "開催する講座の内容とメモを管理できます。"],
   journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
 };
 document.querySelectorAll(".rail-btn").forEach(btn => {
@@ -37,6 +38,7 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
     if (v === "timing") renderTimingTables();
     if (v === "spread") initSpreadTab();
     if (v === "combo") { document.getElementById("comboDeckStage").style.display = "flex"; renderComboDeckStage(); }
+    if (v === "courses") renderCourseList();
   });
 });
 
@@ -811,6 +813,78 @@ document.getElementById("resultCard").addEventListener("click", () => {
 });
 
 // 組み合わせ引き：カード画像クリックで拡大
+
+// ---------- 講座 ----------
+const COURSE_MEMO_KEY = "tarot_course_memo_v1";
+function loadCourseMemos() {
+  try { return JSON.parse(localStorage.getItem(COURSE_MEMO_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveCourseMemo(courseId, text) {
+  const memos = loadCourseMemos();
+  memos[courseId] = text;
+  localStorage.setItem(COURSE_MEMO_KEY, JSON.stringify(memos));
+}
+
+function renderCourseList() {
+  const list = document.getElementById("courseList");
+  list.innerHTML = "";
+  COURSES.forEach(course => {
+    const card = document.createElement("div");
+    card.className = "course-card";
+    card.innerHTML = `
+      <div class="course-title">${course.title}</div>
+      <div class="course-sub">${course.subtitle}</div>
+      <div class="course-meta">${course.tags.map(t => `<span class="course-tag">${t}</span>`).join("")}</div>`;
+    card.addEventListener("click", () => openCourseDetail(course));
+    list.appendChild(card);
+  });
+}
+
+let currentCourseId = null;
+const courseDetailBackdrop = document.getElementById("courseDetailBackdrop");
+
+function openCourseDetail(course) {
+  currentCourseId = course.id;
+  document.getElementById("courseDetailTitle").textContent = course.title;
+  document.getElementById("courseDetailSubtitle").textContent = course.subtitle;
+
+  const program = document.getElementById("courseProgram");
+  program.innerHTML = "";
+  course.program.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "course-program-item";
+    row.innerHTML = `
+      <div class="course-program-time">${item.time}</div>
+      <div class="course-program-body">
+        <div class="cp-title">${item.title}</div>
+        <div class="cp-desc">${item.desc}</div>
+      </div>`;
+    program.appendChild(row);
+  });
+
+  const memos = loadCourseMemos();
+  document.getElementById("courseMemoBox").value = memos[course.id] || "";
+  document.getElementById("courseMemoStatus").textContent = "";
+
+  courseDetailBackdrop.classList.remove("hidden");
+}
+
+document.getElementById("courseDetailClose").addEventListener("click", () => courseDetailBackdrop.classList.add("hidden"));
+courseDetailBackdrop.addEventListener("click", (e) => { if (e.target === courseDetailBackdrop) courseDetailBackdrop.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") courseDetailBackdrop.classList.add("hidden"); });
+
+let courseMemoTimer = null;
+document.getElementById("courseMemoBox").addEventListener("input", (e) => {
+  if (!currentCourseId) return;
+  clearTimeout(courseMemoTimer);
+  const status = document.getElementById("courseMemoStatus");
+  status.textContent = "";
+  courseMemoTimer = setTimeout(() => {
+    saveCourseMemo(currentCourseId, e.target.value);
+    status.textContent = "保存しました";
+    setTimeout(() => { status.textContent = ""; }, 1500);
+  }, 500);
+});
 
 // ---------- init ----------
 renderGrid();
