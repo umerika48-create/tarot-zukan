@@ -650,6 +650,23 @@ function renderSpreadBoard() {
   board.className = "spread-board layout-" + layout;
   board.innerHTML = "";
 
+  if (layout === "hexagram") {
+    const R = 175, cx = 240, cy = 240;
+    const pts = [0,1,2,3,4,5].map(i => {
+      const angle = (i * 60 - 90) * Math.PI / 180;
+      return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
+    });
+    const triA = [pts[0], pts[2], pts[4]].map(p => p.join(",")).join(" ");
+    const triB = [pts[1], pts[3], pts[5]].map(p => p.join(",")).join(" ");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "480");
+    svg.setAttribute("height", "480");
+    svg.style.cssText = "position:absolute; top:0; left:0; pointer-events:none;";
+    svg.innerHTML = `<polygon points="${triA}" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/>
+      <polygon points="${triB}" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/>`;
+    board.appendChild(svg);
+  }
+
   const positions = currentSpread.positions;
   const n = positions.length;
 
@@ -672,6 +689,12 @@ function renderSpreadBoard() {
     if (layout === "horoscope") {
       const R = 220, cx = 280, cy = 280;
       const angle = (i * 30 - 90) * Math.PI / 180;
+      slot.style.left = (cx + R * Math.cos(angle) - 39) + "px";
+      slot.style.top = (cy + R * Math.sin(angle) - 60) + "px";
+    }
+    if (layout === "hexagram") {
+      const R = 175, cx = 240, cy = 240;
+      const angle = (i * 60 - 90) * Math.PI / 180;
       slot.style.left = (cx + R * Math.cos(angle) - 39) + "px";
       slot.style.top = (cy + R * Math.sin(angle) - 60) + "px";
     }

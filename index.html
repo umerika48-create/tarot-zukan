@@ -326,6 +326,8 @@
   .layout-grand .slot-name { display:none; }
   .layout-horoscope { position:relative; width:100%; max-width:560px; height:560px; margin:0 auto; }
   .layout-horoscope .spread-slot { position:absolute; }
+  .layout-hexagram { position:relative; width:100%; max-width:480px; height:480px; margin:0 auto; }
+  .layout-hexagram .spread-slot { position:absolute; }
 
   .spread-detail-backdrop {
     position:fixed; inset:0; background: rgba(10,9,14,.72); backdrop-filter: blur(2px);
@@ -428,7 +430,7 @@
     .combo-deck-slot .result-card { width: 100px !important; }
 
     /* スプレッド：固定座標レイアウトは横スクロールで対応 */
-    .layout-celtic, .layout-horoscope {
+    .layout-celtic, .layout-horoscope, .layout-hexagram {
       transform: scale(0.62); transform-origin: top left;
       width: 166%; /* compensate for the scale so scroll container sizes correctly */
     }

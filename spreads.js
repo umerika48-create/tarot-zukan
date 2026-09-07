@@ -10,7 +10,7 @@ const SPREADS = {
       positions:[{label:"過去", desc:"これまでの流れ、背景にあったこと。"},
                  {label:"現在", desc:"今まさに起きていること。"},
                  {label:"未来", desc:"このまま進んだ場合の見通し。"}] },
-    { id:"hexagram", name:"ヘキサグラム", count:6, layout:"flow",
+    { id:"hexagram", name:"ヘキサグラム", count:6, layout:"hexagram",
       positions:[{label:"自分の気持ち", desc:"あなたが今、心の中で感じていること。"},
                  {label:"相手の気持ち", desc:"相手が今、心の中で感じていること。"},
                  {label:"二人の関係の現状", desc:"今の二人の関係性を表します。"},
