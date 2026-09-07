@@ -651,7 +651,7 @@ function renderSpreadBoard() {
   board.innerHTML = "";
 
   if (layout === "hexagram") {
-    const R = 175, cx = 240, cy = 240;
+    const R = 292, cx = 400, cy = 400;
     const pts = [0,1,2,3,4,5].map(i => {
       const angle = (i * 60 - 90) * Math.PI / 180;
       return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
@@ -659,11 +659,11 @@ function renderSpreadBoard() {
     const triA = [pts[0], pts[2], pts[4]].map(p => p.join(",")).join(" ");
     const triB = [pts[1], pts[3], pts[5]].map(p => p.join(",")).join(" ");
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "480");
-    svg.setAttribute("height", "480");
+    svg.setAttribute("width", "800");
+    svg.setAttribute("height", "800");
     svg.style.cssText = "position:absolute; top:0; left:0; pointer-events:none;";
-    svg.innerHTML = `<polygon points="${triA}" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/>
-      <polygon points="${triB}" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/>`;
+    svg.innerHTML = `<polygon points="${triA}" fill="none" stroke="var(--gold-dim)" stroke-width="2"/>
+      <polygon points="${triB}" fill="none" stroke="var(--gold-dim)" stroke-width="2"/>`;
     board.appendChild(svg);
   }
 
@@ -677,9 +677,9 @@ function renderSpreadBoard() {
 
     if (layout === "celtic") {
       const coords = [
-        {x:230,y:180},{x:230,y:180,rot:1},{x:230,y:40},{x:230,y:320},
-        {x:70,y:180},{x:390,y:180},
-        {x:520,y:390},{x:520,y:270},{x:520,y:150},{x:520,y:30}
+        {x:383,y:300},{x:383,y:300,rot:1},{x:383,y:67},{x:383,y:533},
+        {x:117,y:300},{x:650,y:300},
+        {x:867,y:650},{x:867,y:450},{x:867,y:250},{x:867,y:50}
       ];
       const c = coords[i] || {x:0,y:0};
       slot.style.left = c.x + "px";
@@ -687,16 +687,16 @@ function renderSpreadBoard() {
       if (c.rot) slot.style.transform = "rotate(90deg)";
     }
     if (layout === "horoscope") {
-      const R = 220, cx = 280, cy = 280;
+      const R = 367, cx = 467, cy = 467;
       const angle = (i * 30 - 90) * Math.PI / 180;
-      slot.style.left = (cx + R * Math.cos(angle) - 39) + "px";
-      slot.style.top = (cy + R * Math.sin(angle) - 60) + "px";
+      slot.style.left = (cx + R * Math.cos(angle) - 65) + "px";
+      slot.style.top = (cy + R * Math.sin(angle) - 100) + "px";
     }
     if (layout === "hexagram") {
-      const R = 175, cx = 240, cy = 240;
+      const R = 292, cx = 400, cy = 400;
       const angle = (i * 60 - 90) * Math.PI / 180;
-      slot.style.left = (cx + R * Math.cos(angle) - 39) + "px";
-      slot.style.top = (cy + R * Math.sin(angle) - 60) + "px";
+      slot.style.left = (cx + R * Math.cos(angle) - 65) + "px";
+      slot.style.top = (cy + R * Math.sin(angle) - 100) + "px";
     }
 
     const label = document.createElement("div");
