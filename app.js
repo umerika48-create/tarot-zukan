@@ -53,17 +53,36 @@ document.querySelectorAll("#dictDeckRow .chip").forEach(chip => {
     document.querySelectorAll("#chipRow .chip").forEach(c => c.classList.remove("active"));
     const allChip = document.querySelector('#chipRow .chip[data-suit="all"]');
     if (allChip) allChip.classList.add("active");
+    document.getElementById("minorSubRow").style.display = "none";
     renderGrid();
   });
 });
+
+function selectSuitChip(chip) {
+  document.querySelectorAll("#chipRow .chip, #minorSubRow .chip").forEach(c => c.classList.remove("active"));
+  chip.classList.add("active");
+  currentSuit = chip.dataset.suit;
+  renderGrid();
+}
+
 document.querySelectorAll("#chipRow .chip").forEach(chip => {
   chip.addEventListener("click", () => {
-    document.querySelectorAll("#chipRow .chip").forEach(c => c.classList.remove("active"));
-    chip.classList.add("active");
-    currentSuit = chip.dataset.suit;
-    renderGrid();
+    if (chip.id === "minorToggleChip") {
+      const subRow = document.getElementById("minorSubRow");
+      const willShow = subRow.style.display === "none";
+      subRow.style.display = willShow ? "flex" : "none";
+      selectSuitChip(chip);
+      return;
+    }
+    document.getElementById("minorSubRow").style.display = "none";
+    selectSuitChip(chip);
   });
 });
+
+document.querySelectorAll("#minorSubRow .chip").forEach(chip => {
+  chip.addEventListener("click", () => selectSuitChip(chip));
+});
+
 document.getElementById("searchBox").addEventListener("input", (e) => {
   currentQuery = e.target.value.trim();
   renderGrid();
@@ -84,7 +103,9 @@ function renderGrid() {
   const source = getDictDeckArray();
   const filtered = source.filter(c => {
     const suitOk = (currentDictDeck !== "tarot" && currentDictDeck !== "marseille") || currentSuit === "all"
-      || (currentSuit.startsWith("court-")
+      || (currentSuit === "minor"
+          ? c.arcana !== "major"
+          : currentSuit.startsWith("court-")
           ? (c.arcana === currentSuit.replace("court-", "") && c.number >= 11 && c.number <= 14)
           : c.arcana === currentSuit);
     const qOk = !q || c.name_jp.toLowerCase().includes(q) || c.name_en.toLowerCase().includes(q) ||

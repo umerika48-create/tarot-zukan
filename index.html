@@ -480,24 +480,27 @@
     <!-- 図鑑 VIEW -->
     <div class="view" id="view-dict">
       <div class="chiprow" id="dictDeckRow">
-        <div class="chip active" data-deck="tarot">タロット（RWS）</div>
-        <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
-        <div class="chip" data-deck="lenormand">ルノルマン</div>
-        <div class="chip" data-deck="rune">ルーン</div>
-        <div class="chip" data-deck="heart_oracle">Heart Oracle</div>
-        <div class="chip" data-deck="step_oracle">Step Oracle</div>
+        <div class="chip active" data-deck="tarot">タロット（RWS）（78）</div>
+        <div class="chip" data-deck="marseille">タロット（マルセイユ）（78）</div>
+        <div class="chip" data-deck="lenormand">ルノルマン（36）</div>
+        <div class="chip" data-deck="rune">ルーン（24）</div>
+        <div class="chip" data-deck="heart_oracle">Heart Oracle（22）</div>
+        <div class="chip" data-deck="step_oracle">Step Oracle（22）</div>
       </div>
       <div class="chiprow" id="chipRow">
         <div class="chip active" data-suit="all">すべて</div>
-        <div class="chip" data-suit="major">大アルカナ</div>
-        <div class="chip" data-suit="wands">ワンド（火）</div>
-        <div class="chip" data-suit="cups">カップ（水）</div>
-        <div class="chip" data-suit="swords">ソード（風）</div>
-        <div class="chip" data-suit="pentacles">ペンタクル（地）</div>
+        <div class="chip" data-suit="major">大アルカナ（22）</div>
+        <div class="chip" data-suit="minor" id="minorToggleChip">小アルカナ（56）</div>
         <div class="chip" data-suit="court-wands">コート（火）</div>
         <div class="chip" data-suit="court-cups">コート（水）</div>
         <div class="chip" data-suit="court-swords">コート（風）</div>
         <div class="chip" data-suit="court-pentacles">コート（地）</div>
+      </div>
+      <div class="chiprow" id="minorSubRow" style="display:none; margin-top:8px;">
+        <div class="chip" data-suit="wands">ワンド（火）（14）</div>
+        <div class="chip" data-suit="cups">カップ（水）（14）</div>
+        <div class="chip" data-suit="swords">ソード（風）（14）</div>
+        <div class="chip" data-suit="pentacles">ペンタクル（地）（14）</div>
       </div>
       <div class="grid" id="cardGrid"></div>
       <div class="empty" id="emptyMsg" style="display:none;">該当するカードが見つかりませんでした。</div>
