@@ -429,12 +429,8 @@
     .combo-deck-slot { width: 100px; height: 172px; }
     .combo-deck-slot .result-card { width: 100px !important; }
 
-    /* スプレッド：固定座標レイアウトは横スクロールで対応 */
-    .layout-celtic, .layout-horoscope, .layout-hexagram {
-      transform: scale(0.4); transform-origin: top left;
-      width: 250%; /* compensate for the scale so scroll container sizes correctly */
-    }
-    .spread-board { overflow-x: auto; }
+    /* スプレッド：固定座標レイアウトはJSで画面幅ぴったりに自動縮小（スクロールなし） */
+    .spread-board { overflow-x: visible; }
     .layout-grid3 { grid-template-columns: repeat(3, 74px); gap: 10px; }
     .layout-grand { grid-template-columns: repeat(9, 32px); gap: 4px; }
     .layout-grand .slot-card { width: 32px; }

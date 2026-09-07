@@ -682,6 +682,8 @@ function renderSpreadBoard() {
 
   const positions = currentSpread.positions;
   const n = positions.length;
+  const SLOT_W = 150, SLOT_H = 290; // カード本体＋ラベル・名前分の余裕を含む概算サイズ
+  let maxX = 0, maxY = 0;
 
   positions.forEach((pos, i) => {
     const card = spreadDrawnCards[i];
@@ -698,18 +700,28 @@ function renderSpreadBoard() {
       slot.style.left = c.x + "px";
       slot.style.top = c.y + "px";
       if (c.rot) slot.style.transform = "rotate(90deg)";
+      maxX = Math.max(maxX, c.x + SLOT_W);
+      maxY = Math.max(maxY, c.y + SLOT_H);
     }
     if (layout === "horoscope") {
       const R = 367, cx = 467, cy = 467;
       const angle = (i * 30 - 90) * Math.PI / 180;
-      slot.style.left = (cx + R * Math.cos(angle) - 65) + "px";
-      slot.style.top = (cy + R * Math.sin(angle) - 100) + "px";
+      const left = cx + R * Math.cos(angle) - 65;
+      const top = cy + R * Math.sin(angle) - 100;
+      slot.style.left = left + "px";
+      slot.style.top = top + "px";
+      maxX = Math.max(maxX, left + SLOT_W);
+      maxY = Math.max(maxY, top + SLOT_H);
     }
     if (layout === "hexagram") {
       const R = 292, cx = 400, cy = 400;
       const angle = (i * 60 - 90) * Math.PI / 180;
-      slot.style.left = (cx + R * Math.cos(angle) - 65) + "px";
-      slot.style.top = (cy + R * Math.sin(angle) - 100) + "px";
+      const left = cx + R * Math.cos(angle) - 65;
+      const top = cy + R * Math.sin(angle) - 100;
+      slot.style.left = left + "px";
+      slot.style.top = top + "px";
+      maxX = Math.max(maxX, left + SLOT_W);
+      maxY = Math.max(maxY, top + SLOT_H);
     }
 
     const label = document.createElement("div");
@@ -742,7 +754,35 @@ function renderSpreadBoard() {
 
     board.appendChild(slot);
   });
+
+  fitAbsoluteLayoutToScreen(board, layout, maxX, maxY);
 }
+
+function fitAbsoluteLayoutToScreen(board, layout, naturalW, naturalH) {
+  const isAbsoluteLayout = layout === "celtic" || layout === "horoscope" || layout === "hexagram";
+  board.style.transform = "";
+  board.style.width = "";
+  board.style.height = "";
+  board.style.marginBottom = "";
+  if (!isAbsoluteLayout) return;
+
+  if (window.innerWidth > 760) return; // デスクトップはそのままのサイズで表示
+
+  const available = window.innerWidth - 32; // .view の左右パディング(16px×2)分を差し引く
+  const scale = Math.min(available / naturalW, 1);
+  board.style.width = naturalW + "px";
+  board.style.height = naturalH + "px";
+  board.style.transform = `scale(${scale})`;
+  board.style.transformOrigin = "top left";
+  board.style.marginBottom = -(naturalH - naturalH * scale) + "px";
+}
+
+window.addEventListener("resize", () => {
+  const board = document.getElementById("spreadBoard");
+  if (currentSpread && spreadDrawnCards.length && board.querySelector(".spread-slot")) {
+    renderSpreadBoard();
+  }
+});
 
 const spreadDetailBackdrop = document.getElementById("spreadDetailBackdrop");
 function openSpreadDetail(pos, card, index) {
