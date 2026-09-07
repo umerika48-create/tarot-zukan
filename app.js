@@ -54,12 +54,13 @@ document.querySelectorAll("#dictDeckRow .chip").forEach(chip => {
     const allChip = document.querySelector('#chipRow .chip[data-suit="all"]');
     if (allChip) allChip.classList.add("active");
     document.getElementById("minorSubRow").style.display = "none";
+    document.getElementById("courtSubRow").style.display = "none";
     renderGrid();
   });
 });
 
 function selectSuitChip(chip) {
-  document.querySelectorAll("#chipRow .chip, #minorSubRow .chip").forEach(c => c.classList.remove("active"));
+  document.querySelectorAll("#chipRow .chip, #minorSubRow .chip, #courtSubRow .chip").forEach(c => c.classList.remove("active"));
   chip.classList.add("active");
   currentSuit = chip.dataset.suit;
   renderGrid();
@@ -71,15 +72,25 @@ document.querySelectorAll("#chipRow .chip").forEach(chip => {
       const subRow = document.getElementById("minorSubRow");
       const willShow = subRow.style.display === "none";
       subRow.style.display = willShow ? "flex" : "none";
+      document.getElementById("courtSubRow").style.display = "none";
+      selectSuitChip(chip);
+      return;
+    }
+    if (chip.id === "courtToggleChip") {
+      const subRow = document.getElementById("courtSubRow");
+      const willShow = subRow.style.display === "none";
+      subRow.style.display = willShow ? "flex" : "none";
+      document.getElementById("minorSubRow").style.display = "none";
       selectSuitChip(chip);
       return;
     }
     document.getElementById("minorSubRow").style.display = "none";
+    document.getElementById("courtSubRow").style.display = "none";
     selectSuitChip(chip);
   });
 });
 
-document.querySelectorAll("#minorSubRow .chip").forEach(chip => {
+document.querySelectorAll("#minorSubRow .chip, #courtSubRow .chip").forEach(chip => {
   chip.addEventListener("click", () => selectSuitChip(chip));
 });
 
@@ -105,6 +116,8 @@ function renderGrid() {
     const suitOk = (currentDictDeck !== "tarot" && currentDictDeck !== "marseille") || currentSuit === "all"
       || (currentSuit === "minor"
           ? c.arcana !== "major"
+          : currentSuit === "court"
+          ? (c.arcana !== "major" && c.number >= 11 && c.number <= 14)
           : currentSuit.startsWith("court-")
           ? (c.arcana === currentSuit.replace("court-", "") && c.number >= 11 && c.number <= 14)
           : c.arcana === currentSuit);
