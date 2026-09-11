@@ -240,7 +240,7 @@ function openModal(c) {
     document.getElementById("mUp").textContent = c.meaning;
     document.getElementById("mRvSec").style.display = "none";
     document.getElementById("mLoveSec").style.display = "block";
-    document.getElementById("mLoveLabel").textContent = c.deck === "step_oracle" ? "後押しのひとこと" : "恋愛での視点";
+    document.getElementById("mLoveLabel").textContent = c.deck === "step_oracle" ? "後押しのひとこと" : c.deck === "heart_oracle" ? "今のアプローチ" : "恋愛での視点";
     document.getElementById("mLove").textContent = c.love;
     modalBackdrop.classList.remove("hidden");
     return;
@@ -429,7 +429,7 @@ document.getElementById("deckBack").addEventListener("click", function () {
       document.getElementById("rTitle").textContent = drawnCard.name_jp;
       document.getElementById("rMeaningSec").style.display = "block";
       document.getElementById("rLoveSec").style.display = "block";
-      document.getElementById("rLoveLabel").textContent = currentDeck === "step_oracle" ? "後押しのひとこと" : "恋愛での視点";
+      document.getElementById("rLoveLabel").textContent = currentDeck === "step_oracle" ? "後押しのひとこと" : currentDeck === "heart_oracle" ? "今のアプローチ" : "恋愛での視点";
       const hasTiming = currentDeck === "heart_oracle";
       document.getElementById("rTimingTermSec").style.display = hasTiming ? "block" : "none";
       document.getElementById("rTimingFeatureSec").style.display = hasTiming ? "block" : "none";
