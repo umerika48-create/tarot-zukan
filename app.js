@@ -799,7 +799,12 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") spreadDeta
 // ---------- 組み合わせ引き ----------
 function getComboDecks() {
   const mode = document.querySelector("#comboModeRow .chip.active").dataset.combo;
-  if (mode === "three") return ["tarot", "lenormand", "rune"];
+  if (mode === "three") {
+    const deckX = document.querySelector("#comboDeckXRow .chip.active").dataset.deck;
+    const deckY = document.querySelector("#comboDeckYRow .chip.active").dataset.deck;
+    const deckZ = document.querySelector("#comboDeckZRow .chip.active").dataset.deck;
+    return [deckX, deckY, deckZ];
+  }
   const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
   const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
   return [deckA, deckB];
@@ -830,25 +835,29 @@ document.querySelectorAll("#comboModeRow .chip").forEach(chip => {
   chip.addEventListener("click", () => {
     document.querySelectorAll("#comboModeRow .chip").forEach(c => c.classList.remove("active"));
     chip.classList.add("active");
+    document.getElementById("comboThreePicker").style.display = chip.dataset.combo === "three" ? "block" : "none";
     document.getElementById("comboTwoPicker").style.display = chip.dataset.combo === "two" ? "block" : "none";
     renderComboDeckStage();
   });
 });
 
-function setupComboDeckRow(rowId) {
+function setupComboDeckRow(rowId, groupRowIds) {
   document.querySelectorAll(`#${rowId} .chip`).forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll(`#${rowId} .chip`).forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
-      const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
-      const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
-      if (deckA === deckB) return; // wait for the user to pick two different decks before refreshing
+      const picked = groupRowIds.map(id => document.querySelector(`#${id} .chip.active`).dataset.deck);
+      const hasDupe = new Set(picked).size !== picked.length;
+      if (hasDupe) return; // wait for the user to pick all-different decks before refreshing
       renderComboDeckStage();
     });
   });
 }
-setupComboDeckRow("comboDeckARow");
-setupComboDeckRow("comboDeckBRow");
+setupComboDeckRow("comboDeckARow", ["comboDeckARow", "comboDeckBRow"]);
+setupComboDeckRow("comboDeckBRow", ["comboDeckARow", "comboDeckBRow"]);
+setupComboDeckRow("comboDeckXRow", ["comboDeckXRow", "comboDeckYRow", "comboDeckZRow"]);
+setupComboDeckRow("comboDeckYRow", ["comboDeckXRow", "comboDeckYRow", "comboDeckZRow"]);
+setupComboDeckRow("comboDeckZRow", ["comboDeckXRow", "comboDeckYRow", "comboDeckZRow"]);
 
 function drawOneFrom(deck) {
   const arr = spreadDeckArray(deck);
@@ -900,7 +909,15 @@ function drawComboDecks() {
   const mode = document.querySelector("#comboModeRow .chip.active").dataset.combo;
   let decks;
   if (mode === "three") {
-    decks = ["tarot", "lenormand", "rune"];
+    const deckX = document.querySelector("#comboDeckXRow .chip.active").dataset.deck;
+    const deckY = document.querySelector("#comboDeckYRow .chip.active").dataset.deck;
+    const deckZ = document.querySelector("#comboDeckZRow .chip.active").dataset.deck;
+    if (new Set([deckX, deckY, deckZ]).size !== 3) {
+      alert("3つのデッキはそれぞれ別々のものを選んでください。");
+      stage.dataset.drawn = "";
+      return;
+    }
+    decks = [deckX, deckY, deckZ];
   } else {
     const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
     const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;

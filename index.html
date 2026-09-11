@@ -608,8 +608,38 @@
     <!-- 組み合わせ引き VIEW -->
     <div class="view hidden" id="view-combo">
       <div class="chiprow" id="comboModeRow">
-        <div class="chip active" data-combo="three">3枚引き（タロット・ルノルマン・ルーン）</div>
+        <div class="chip active" data-combo="three">3枚引き（デッキを組み合わせる）</div>
         <div class="chip" data-combo="two">2枚引き（デッキを組み合わせる）</div>
+      </div>
+
+      <div id="comboThreePicker" style="margin-top:14px;">
+        <div class="sub" style="margin-bottom:8px;">1つ目のデッキ</div>
+        <div class="chiprow" id="comboDeckXRow">
+          <div class="chip active" data-deck="tarot">タロット（RWS）</div>
+          <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
+          <div class="chip" data-deck="lenormand">ルノルマン</div>
+          <div class="chip" data-deck="rune">ルーン</div>
+        <div class="chip" data-deck="heart_oracle">Heart Oracle</div>
+        <div class="chip" data-deck="step_oracle">Step Oracle</div>
+        </div>
+        <div class="sub" style="margin:12px 0 8px;">2つ目のデッキ</div>
+        <div class="chiprow" id="comboDeckYRow">
+          <div class="chip" data-deck="tarot">タロット（RWS）</div>
+          <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
+          <div class="chip active" data-deck="lenormand">ルノルマン</div>
+          <div class="chip" data-deck="rune">ルーン</div>
+        <div class="chip" data-deck="heart_oracle">Heart Oracle</div>
+        <div class="chip" data-deck="step_oracle">Step Oracle</div>
+        </div>
+        <div class="sub" style="margin:12px 0 8px;">3つ目のデッキ</div>
+        <div class="chiprow" id="comboDeckZRow">
+          <div class="chip" data-deck="tarot">タロット（RWS）</div>
+          <div class="chip" data-deck="marseille">タロット（マルセイユ）</div>
+          <div class="chip" data-deck="lenormand">ルノルマン</div>
+          <div class="chip active" data-deck="rune">ルーン</div>
+        <div class="chip" data-deck="heart_oracle">Heart Oracle</div>
+        <div class="chip" data-deck="step_oracle">Step Oracle</div>
+        </div>
       </div>
 
       <div id="comboTwoPicker" style="display:none; margin-top:14px;">
