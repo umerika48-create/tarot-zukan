@@ -99,3 +99,4 @@ const SPREADS = {
 SPREADS.marseille = SPREADS.tarot;
 SPREADS.heart_oracle = SPREADS.rune;
 SPREADS.step_oracle = SPREADS.rune;
+SPREADS.answer_oracle = SPREADS.rune;
