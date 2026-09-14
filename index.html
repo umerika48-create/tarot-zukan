@@ -117,7 +117,29 @@
   }
   @media (max-width: 620px) { .modal { grid-template-columns: 1fr; width:100%; } }
   .modal-img { background:#0c0b12; display:flex; align-items:center; justify-content:center; padding:32px; position:relative; }
-  .modal-img img { width:100%; max-width:340px; border-radius:8px; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  .modal-img img { width:100%; max-width:340px; border-radius:8px; box-shadow: 0 8px 30px rgba(0,0,0,.5); display:block; }
+  .modal-img-frame { position:relative; display:inline-block; line-height:0; }
+  .symbol-hotspot-layer { position:absolute; inset:0; pointer-events:none; }
+  .symbol-hotspot {
+    position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px;
+    border-radius:50%; cursor:pointer; pointer-events:auto;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .symbol-hotspot::before {
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background: radial-gradient(circle, rgba(230,196,120,.95) 0%, rgba(230,196,120,.35) 55%, rgba(230,196,120,0) 75%);
+    animation: hotspot-pulse 2.2s ease-in-out infinite;
+  }
+  .symbol-hotspot::after {
+    content:""; position:absolute; width:8px; height:8px; border-radius:50%;
+    background: var(--gold, #e6c478); box-shadow: 0 0 6px 1px rgba(230,196,120,.9);
+  }
+  .symbol-hotspot:hover::after { background:#fff; }
+  @keyframes hotspot-pulse {
+    0% { transform: scale(0.6); opacity:.9; }
+    70% { transform: scale(1.9); opacity:0; }
+    100% { transform: scale(1.9); opacity:0; }
+  }
   .zoom-btn {
     position:absolute; bottom:14px; right:14px; width:34px; height:34px; border-radius:50%;
     background:rgba(30,29,43,.85); border:1px solid var(--gold-dim); color:var(--gold);
@@ -718,7 +740,10 @@
 <div class="modal-backdrop hidden" id="modalBackdrop">
   <div class="modal">
     <div class="modal-img">
-      <img id="modalImg" src="" alt="">
+      <div class="modal-img-frame" id="modalImgFrame">
+        <img id="modalImg" src="" alt="">
+        <div class="symbol-hotspot-layer" id="symbolHotspotLayer"></div>
+      </div>
       <div class="zoom-btn" id="zoomBtn" title="拡大表示">&#128269;</div>
     </div>
     <div class="modal-body">

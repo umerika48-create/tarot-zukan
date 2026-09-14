@@ -227,6 +227,7 @@ function openModal(c) {
   document.getElementById("mTitle").textContent = c.name_jp;
   document.getElementById("mTitleEn").textContent = c.name_en;
   document.getElementById("mKeywords").innerHTML = c.keywords.map(k => `<span class="kw">${k}</span>`).join("");
+  document.getElementById("symbolHotspotLayer").innerHTML = "";
 
   if (c.deck === "lenormand" || c.deck === "rune" || c.deck === "heart_oracle" || c.deck === "step_oracle" || c.deck === "answer_oracle") {
     document.getElementById("mEyebrow").textContent =
@@ -290,6 +291,8 @@ function openModal(c) {
   }
   const chipRow = document.getElementById("mSymbolChipRow");
   chipRow.innerHTML = "";
+  const hotspotLayer = document.getElementById("symbolHotspotLayer");
+  hotspotLayer.innerHTML = "";
   if (c.symbols && c.symbols.length) {
     c.symbols.forEach((s, i) => {
       const chip = document.createElement("span");
@@ -297,6 +300,16 @@ function openModal(c) {
       chip.textContent = s.label;
       chip.addEventListener("click", () => openSymbolDetail(c, i));
       chipRow.appendChild(chip);
+
+      if (typeof s.x === "number" && typeof s.y === "number") {
+        const dot = document.createElement("div");
+        dot.className = "symbol-hotspot";
+        dot.style.left = s.x + "%";
+        dot.style.top = s.y + "%";
+        dot.title = s.label;
+        dot.addEventListener("click", () => openSymbolDetail(c, i));
+        hotspotLayer.appendChild(dot);
+      }
     });
   }
   if (c.current_situation) {
