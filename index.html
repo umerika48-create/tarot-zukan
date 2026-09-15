@@ -119,19 +119,33 @@
   .modal-img { background:#0c0b12; display:flex; align-items:center; justify-content:center; padding:32px; position:relative; }
   .modal-img img { width:100%; max-width:340px; border-radius:8px; box-shadow: 0 8px 30px rgba(0,0,0,.5); display:block; }
   .modal-img-frame { position:relative; display:inline-block; line-height:0; }
-  .symbol-hotspot-layer { position:absolute; inset:0; pointer-events:none; }
+  .symbol-hotspot-layer { position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .15s ease; }
+  .symbol-hotspot-layer.show { pointer-events:auto; opacity:1; }
   .symbol-hotspot {
     position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px;
     border-radius:50%; cursor:pointer; pointer-events:auto;
-    background: rgba(255,255,255,.10);
-    border: 1.5px solid rgba(255,255,255,.55);
-    box-shadow: 0 0 0 3px rgba(255,255,255,.06);
-    transition: background .15s ease, border-color .15s ease;
+    background: var(--gold, #c9a86a);
+    border: 1.5px solid rgba(0,0,0,.25);
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+    color:#2c2210; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    transition: transform .15s ease, background .15s ease;
   }
   .symbol-hotspot:hover, .symbol-hotspot.active {
-    background: rgba(255,255,255,.22);
-    border-color: rgba(255,255,255,.9);
+    background: #f3e0ac;
+    transform: scale(1.12);
   }
+  .view-toggle {
+    position:absolute; top:10px; right:10px; z-index:6;
+    display:flex; background:rgba(20,18,28,.75); border-radius:20px;
+    padding:3px; gap:2px; backdrop-filter: blur(2px);
+  }
+  .view-toggle-btn {
+    border:none; background:transparent; color:#d8cdb0; font-size:12px;
+    padding:5px 12px; border-radius:16px; cursor:pointer; line-height:1;
+    font-family:inherit;
+  }
+  .view-toggle-btn.active { background:var(--gold, #c9a86a); color:#2c2210; font-weight:700; }
   .symbol-hotspot-label {
     position:absolute; transform: translate(-50%, -100%);
     background: rgba(20,18,28,.95); border:1px solid var(--gold-dim, #8a7550);
@@ -748,6 +762,10 @@
       <div class="modal-img-frame" id="modalImgFrame">
         <img id="modalImg" src="" alt="">
         <div class="symbol-hotspot-layer" id="symbolHotspotLayer"></div>
+        <div class="view-toggle" id="viewToggle" style="display:none;">
+          <button class="view-toggle-btn active" id="viewTogglePlain" type="button">絵柄</button>
+          <button class="view-toggle-btn" id="viewToggleSymbol" type="button">シンボル</button>
+        </div>
       </div>
       <div class="zoom-btn" id="zoomBtn" title="拡大表示">&#128269;</div>
     </div>

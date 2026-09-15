@@ -228,6 +228,10 @@ function openModal(c) {
   document.getElementById("mTitleEn").textContent = c.name_en;
   document.getElementById("mKeywords").innerHTML = c.keywords.map(k => `<span class="kw">${k}</span>`).join("");
   document.getElementById("symbolHotspotLayer").innerHTML = "";
+  document.getElementById("symbolHotspotLayer").classList.remove("show");
+  document.getElementById("viewToggle").style.display = "none";
+  document.getElementById("viewTogglePlain").classList.add("active");
+  document.getElementById("viewToggleSymbol").classList.remove("active");
 
   if (c.deck === "lenormand" || c.deck === "rune" || c.deck === "heart_oracle" || c.deck === "step_oracle" || c.deck === "answer_oracle") {
     document.getElementById("mEyebrow").textContent =
@@ -303,7 +307,10 @@ function openModal(c) {
     document.querySelectorAll(".symbol-hotspot.active").forEach(d => d.classList.remove("active"));
   }
 
+  let hotspotNum = 0;
   if (c.symbols && c.symbols.length) {
+    const hasCoords = c.symbols.some(s => typeof s.x === "number" && typeof s.y === "number");
+    document.getElementById("viewToggle").style.display = hasCoords ? "flex" : "none";
     c.symbols.forEach((s, i) => {
       const chip = document.createElement("span");
       chip.className = "symbol-chip";
@@ -312,11 +319,13 @@ function openModal(c) {
       chipRow.appendChild(chip);
 
       if (typeof s.x === "number" && typeof s.y === "number") {
+        hotspotNum++;
         const dot = document.createElement("div");
         dot.className = "symbol-hotspot";
         dot.style.left = s.x + "%";
         dot.style.top = s.y + "%";
         dot.title = s.label;
+        dot.textContent = hotspotNum;
         dot.addEventListener("click", (e) => {
           e.stopPropagation();
           const alreadyActive = dot.classList.contains("active");
@@ -332,6 +341,8 @@ function openModal(c) {
         hotspotLayer.appendChild(dot);
       }
     });
+  } else {
+    document.getElementById("viewToggle").style.display = "none";
   }
   document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
   if (c.current_situation) {
@@ -364,6 +375,18 @@ document.getElementById("mPlaceTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mPlacePopup").classList.contains("show");
   closeAllPopups();
   if (!isOpen) document.getElementById("mPlacePopup").classList.add("show");
+});
+document.getElementById("viewTogglePlain").addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("viewTogglePlain").classList.add("active");
+  document.getElementById("viewToggleSymbol").classList.remove("active");
+  document.getElementById("symbolHotspotLayer").classList.remove("show");
+});
+document.getElementById("viewToggleSymbol").addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("viewToggleSymbol").classList.add("active");
+  document.getElementById("viewTogglePlain").classList.remove("active");
+  document.getElementById("symbolHotspotLayer").classList.add("show");
 });
 document.getElementById("modalClose").addEventListener("click", () => modalBackdrop.classList.add("hidden"));
 modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.add("hidden"); });
