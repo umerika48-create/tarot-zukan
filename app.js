@@ -293,6 +293,16 @@ function openModal(c) {
   chipRow.innerHTML = "";
   const hotspotLayer = document.getElementById("symbolHotspotLayer");
   hotspotLayer.innerHTML = "";
+  const hotspotLabel = document.createElement("div");
+  hotspotLabel.className = "symbol-hotspot-label";
+  hotspotLabel.id = "symbolHotspotLabel";
+  hotspotLayer.appendChild(hotspotLabel);
+
+  function hideHotspotLabel() {
+    hotspotLabel.classList.remove("show");
+    document.querySelectorAll(".symbol-hotspot.active").forEach(d => d.classList.remove("active"));
+  }
+
   if (c.symbols && c.symbols.length) {
     c.symbols.forEach((s, i) => {
       const chip = document.createElement("span");
@@ -307,11 +317,23 @@ function openModal(c) {
         dot.style.left = s.x + "%";
         dot.style.top = s.y + "%";
         dot.title = s.label;
-        dot.addEventListener("click", () => openSymbolDetail(c, i));
+        dot.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const alreadyActive = dot.classList.contains("active");
+          hideHotspotLabel();
+          if (alreadyActive) return;
+          dot.classList.add("active");
+          hotspotLabel.textContent = s.label;
+          hotspotLabel.style.left = s.x + "%";
+          hotspotLabel.style.top = Math.max(s.y - 6, 4) + "%";
+          hotspotLabel.classList.add("show");
+          hotspotLabel.onclick = (ev) => { ev.stopPropagation(); hideHotspotLabel(); openSymbolDetail(c, i); };
+        });
         hotspotLayer.appendChild(dot);
       }
     });
   }
+  document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
   if (c.current_situation) {
     document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
     document.getElementById("mSituationText").textContent = c.current_situation;

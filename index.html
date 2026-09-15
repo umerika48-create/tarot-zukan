@@ -121,25 +121,30 @@
   .modal-img-frame { position:relative; display:inline-block; line-height:0; }
   .symbol-hotspot-layer { position:absolute; inset:0; pointer-events:none; }
   .symbol-hotspot {
-    position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px;
+    position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px;
     border-radius:50%; cursor:pointer; pointer-events:auto;
-    display:flex; align-items:center; justify-content:center;
+    background: rgba(255,255,255,.10);
+    border: 1.5px solid rgba(255,255,255,.55);
+    box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+    transition: background .15s ease, border-color .15s ease;
   }
-  .symbol-hotspot::before {
-    content:""; position:absolute; inset:0; border-radius:50%;
-    background: radial-gradient(circle, rgba(230,196,120,.95) 0%, rgba(230,196,120,.35) 55%, rgba(230,196,120,0) 75%);
-    animation: hotspot-pulse 2.2s ease-in-out infinite;
+  .symbol-hotspot:hover, .symbol-hotspot.active {
+    background: rgba(255,255,255,.22);
+    border-color: rgba(255,255,255,.9);
   }
-  .symbol-hotspot::after {
-    content:""; position:absolute; width:8px; height:8px; border-radius:50%;
-    background: var(--gold, #e6c478); box-shadow: 0 0 6px 1px rgba(230,196,120,.9);
+  .symbol-hotspot-label {
+    position:absolute; transform: translate(-50%, -100%);
+    background: rgba(20,18,28,.95); border:1px solid var(--gold-dim, #8a7550);
+    color:#f3e8d0; font-size:13px; padding:6px 12px; border-radius:8px;
+    white-space:nowrap; cursor:pointer; pointer-events:auto;
+    box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    display:none; z-index:5;
   }
-  .symbol-hotspot:hover::after { background:#fff; }
-  @keyframes hotspot-pulse {
-    0% { transform: scale(0.6); opacity:.9; }
-    70% { transform: scale(1.9); opacity:0; }
-    100% { transform: scale(1.9); opacity:0; }
+  .symbol-hotspot-label::after {
+    content:""; position:absolute; left:50%; top:100%; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color: var(--gold-dim, #8a7550);
   }
+  .symbol-hotspot-label.show { display:block; }
   .zoom-btn {
     position:absolute; bottom:14px; right:14px; width:34px; height:34px; border-radius:50%;
     background:rgba(30,29,43,.85); border:1px solid var(--gold-dim); color:var(--gold);
