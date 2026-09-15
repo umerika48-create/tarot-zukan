@@ -158,6 +158,17 @@
     border:6px solid transparent; border-top-color: var(--gold-dim, #8a7550);
   }
   .symbol-hotspot-label.show { display:block; }
+  .nav-btn {
+    position:absolute; top:50%; margin-top:-19px; width:38px; height:38px; border-radius:50%;
+    background:rgba(20,18,28,.72); border:1px solid var(--gold-dim); color:var(--gold);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px;
+    z-index:6; user-select:none;
+  }
+  .nav-btn:hover { background:var(--surface-hover); }
+  .nav-btn.prev { left:8px; }
+  .nav-btn.next { right:8px; }
+  .nav-btn:disabled, .nav-btn.hidden { display:none; }
+  .card-position { text-align:center; font-size:12px; color:var(--text-secondary); margin-top:2px; }
   .zoom-btn {
     position:absolute; bottom:14px; right:14px; width:34px; height:34px; border-radius:50%;
     background:rgba(30,29,43,.85); border:1px solid var(--gold-dim); color:var(--gold);
@@ -762,11 +773,14 @@
         <img id="modalImg" src="" alt="">
         <div class="symbol-hotspot-layer" id="symbolHotspotLayer"></div>
         <div class="zoom-btn" id="zoomBtn" title="拡大表示">&#128269;</div>
+        <div class="nav-btn prev" id="navPrevBtn" title="前のカード">&#10094;</div>
+        <div class="nav-btn next" id="navNextBtn" title="次のカード">&#10095;</div>
       </div>
       <div class="view-toggle" id="viewToggle" style="display:none;">
         <button class="view-toggle-btn active" id="viewTogglePlain" type="button">絵柄</button>
         <button class="view-toggle-btn" id="viewToggleSymbol" type="button">シンボル</button>
       </div>
+      <div class="card-position" id="cardPosition"></div>
     </div>
     <div class="modal-body">
       <button class="modal-close" id="modalClose">&times;</button>

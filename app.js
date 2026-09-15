@@ -7,6 +7,8 @@ const SUIT_JA_SHORT = { major:"", wands:"(火)", cups:"(水)", swords:"(風)", p
 let currentSuit = "all";
 let currentQuery = "";
 let currentDictDeck = "tarot"; // "tarot" | "lenormand" | "rune"
+let currentGridList = [];
+let currentModalIndex = -1;
 
 // ---------- ナビゲーション ----------
 const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), courses: document.getElementById("view-courses"), journal: document.getElementById("view-journal") };
@@ -128,6 +130,7 @@ function renderGrid() {
   });
   grid.innerHTML = "";
   document.getElementById("emptyMsg").style.display = filtered.length ? "none" : "block";
+  currentGridList = filtered;
   filtered.forEach(c => {
     const tile = document.createElement("div");
     tile.className = "card-tile";
@@ -222,6 +225,8 @@ document.querySelectorAll("#aboutModeRow .chip").forEach(chip => {
 // ---------- モーダル ----------
 const modalBackdrop = document.getElementById("modalBackdrop");
 function openModal(c) {
+  currentModalIndex = currentGridList.findIndex(x => x.id === c.id);
+  updateNavButtons();
   document.getElementById("modalImg").src = c.img;
   document.getElementById("modalImg").alt = c.name_jp;
   document.getElementById("mTitle").textContent = c.name_jp;
@@ -405,6 +410,43 @@ document.getElementById("viewToggleSymbol").addEventListener("click", (e) => {
   document.getElementById("viewToggleSymbol").classList.add("active");
   document.getElementById("viewTogglePlain").classList.remove("active");
   document.getElementById("symbolHotspotLayer").classList.add("show");
+});
+function updateNavButtons() {
+  const total = currentGridList.length;
+  const prevBtn = document.getElementById("navPrevBtn");
+  const nextBtn = document.getElementById("navNextBtn");
+  const posEl = document.getElementById("cardPosition");
+  if (currentModalIndex < 0 || total <= 1) {
+    prevBtn.classList.add("hidden");
+    nextBtn.classList.add("hidden");
+    posEl.textContent = "";
+    return;
+  }
+  prevBtn.classList.remove("hidden");
+  nextBtn.classList.remove("hidden");
+  posEl.textContent = (currentModalIndex + 1) + " / " + total;
+}
+function goToModalIndex(newIndex) {
+  const total = currentGridList.length;
+  if (total === 0) return;
+  const wrapped = (newIndex + total) % total;
+  openModal(currentGridList[wrapped]);
+}
+document.getElementById("navPrevBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (currentModalIndex < 0) return;
+  goToModalIndex(currentModalIndex - 1);
+});
+document.getElementById("navNextBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (currentModalIndex < 0) return;
+  goToModalIndex(currentModalIndex + 1);
+});
+document.addEventListener("keydown", (e) => {
+  if (modalBackdrop.classList.contains("hidden")) return;
+  if (currentModalIndex < 0) return;
+  if (e.key === "ArrowLeft") goToModalIndex(currentModalIndex - 1);
+  if (e.key === "ArrowRight") goToModalIndex(currentModalIndex + 1);
 });
 document.getElementById("modalClose").addEventListener("click", () => modalBackdrop.classList.add("hidden"));
 modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.add("hidden"); });
