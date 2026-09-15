@@ -250,6 +250,7 @@ function openModal(c) {
     document.getElementById("mLoveSec").style.display = "block";
     document.getElementById("mLoveLabel").textContent = c.deck === "step_oracle" ? "後押しのひとこと" : c.deck === "heart_oracle" ? "今のアプローチ" : c.deck === "answer_oracle" ? "見極めのひとこと" : "恋愛での視点";
     document.getElementById("mLove").textContent = c.love;
+    document.getElementById("mWorkSec").style.display = "none";
     modalBackdrop.classList.remove("hidden");
     return;
   }
@@ -262,13 +263,17 @@ function openModal(c) {
   document.getElementById("mUp").textContent = c.upright;
   document.getElementById("mRv").textContent = c.reversed;
   document.getElementById("mLove").textContent = c.love;
+  document.getElementById("mWorkSec").style.display = c.work ? "block" : "none";
+  document.getElementById("mWork").textContent = c.work || "";
 
   const storyPopup = document.getElementById("mStoryPopup");
   const situationPopup = document.getElementById("mSituationPopup");
   const placePopup = document.getElementById("mPlacePopup");
+  const connPopup = document.getElementById("mConnPopup");
   storyPopup.classList.remove("show");
   situationPopup.classList.remove("show");
   placePopup.classList.remove("show");
+  connPopup.classList.remove("show");
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
@@ -277,7 +282,8 @@ function openModal(c) {
     document.getElementById("mCatchWrap").style.display = "none";
   }
 
-  const hasAnyTag = c.age_range || c.story || c.current_situation || c.place;
+  const hasConn = c.connections && (c.connections.prev || c.connections.next);
+  const hasAnyTag = c.age_range || c.story || c.current_situation || c.place || hasConn;
   if (hasAnyTag) {
     document.getElementById("mTagRow").style.display = "flex";
     document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
@@ -285,8 +291,14 @@ function openModal(c) {
     document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
     document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
     document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
+    document.getElementById("mConnTag").style.display = hasConn ? "inline-block" : "none";
   } else {
     document.getElementById("mTagRow").style.display = "none";
+  }
+
+  if (hasConn) {
+    document.getElementById("mConnPrev").textContent = c.connections.prev || "";
+    document.getElementById("mConnNext").textContent = c.connections.next || "";
   }
 
   if (c.story) {
@@ -360,6 +372,7 @@ function closeAllPopups() {
   document.getElementById("mStoryPopup").classList.remove("show");
   document.getElementById("mSituationPopup").classList.remove("show");
   document.getElementById("mPlacePopup").classList.remove("show");
+  document.getElementById("mConnPopup").classList.remove("show");
 }
 document.getElementById("mStoryTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mStoryPopup").classList.contains("show");
@@ -375,6 +388,11 @@ document.getElementById("mPlaceTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mPlacePopup").classList.contains("show");
   closeAllPopups();
   if (!isOpen) document.getElementById("mPlacePopup").classList.add("show");
+});
+document.getElementById("mConnTag").addEventListener("click", () => {
+  const isOpen = document.getElementById("mConnPopup").classList.contains("show");
+  closeAllPopups();
+  if (!isOpen) document.getElementById("mConnPopup").classList.add("show");
 });
 document.getElementById("viewTogglePlain").addEventListener("click", (e) => {
   e.stopPropagation();
