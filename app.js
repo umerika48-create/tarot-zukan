@@ -275,10 +275,12 @@ function openModal(c) {
   const situationPopup = document.getElementById("mSituationPopup");
   const placePopup = document.getElementById("mPlacePopup");
   const connPopup = document.getElementById("mConnPopup");
+  const mnemonicPopup = document.getElementById("mMnemonicPopup");
   storyPopup.classList.remove("show");
   situationPopup.classList.remove("show");
   placePopup.classList.remove("show");
   connPopup.classList.remove("show");
+  mnemonicPopup.classList.remove("show");
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
@@ -287,8 +289,8 @@ function openModal(c) {
     document.getElementById("mCatchWrap").style.display = "none";
   }
 
-  const hasConn = c.connections && (c.connections.prev || c.connections.next);
-  const hasAnyTag = c.age_range || c.story || c.current_situation || c.place || hasConn;
+  const hasConn = c.connections && (c.connections.prev || c.connections.next || c.connections.contrast);
+  const hasAnyTag = c.age_range || c.story || c.current_situation || c.place || hasConn || c.mnemonic;
   if (hasAnyTag) {
     document.getElementById("mTagRow").style.display = "flex";
     document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
@@ -297,6 +299,7 @@ function openModal(c) {
     document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
     document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
     document.getElementById("mConnTag").style.display = hasConn ? "inline-block" : "none";
+    document.getElementById("mMnemonicTag").style.display = c.mnemonic ? "inline-block" : "none";
   } else {
     document.getElementById("mTagRow").style.display = "none";
   }
@@ -304,6 +307,12 @@ function openModal(c) {
   if (hasConn) {
     document.getElementById("mConnPrev").textContent = c.connections.prev || "";
     document.getElementById("mConnNext").textContent = c.connections.next || "";
+    const contrastEl = document.getElementById("mConnContrast");
+    contrastEl.textContent = c.connections.contrast || "";
+    contrastEl.style.display = c.connections.contrast ? "block" : "none";
+  }
+  if (c.mnemonic) {
+    document.getElementById("mMnemonicText").textContent = c.mnemonic;
   }
 
   if (c.story) {
@@ -378,6 +387,7 @@ function closeAllPopups() {
   document.getElementById("mSituationPopup").classList.remove("show");
   document.getElementById("mPlacePopup").classList.remove("show");
   document.getElementById("mConnPopup").classList.remove("show");
+  document.getElementById("mMnemonicPopup").classList.remove("show");
 }
 document.getElementById("mStoryTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mStoryPopup").classList.contains("show");
@@ -398,6 +408,11 @@ document.getElementById("mConnTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mConnPopup").classList.contains("show");
   closeAllPopups();
   if (!isOpen) document.getElementById("mConnPopup").classList.add("show");
+});
+document.getElementById("mMnemonicTag").addEventListener("click", () => {
+  const isOpen = document.getElementById("mMnemonicPopup").classList.contains("show");
+  closeAllPopups();
+  if (!isOpen) document.getElementById("mMnemonicPopup").classList.add("show");
 });
 document.getElementById("viewTogglePlain").addEventListener("click", (e) => {
   e.stopPropagation();
