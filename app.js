@@ -288,7 +288,6 @@ function openModal(c) {
     document.getElementById("catchEditArea").classList.remove("show");
     document.getElementById("catchEditSaved").classList.remove("show");
     document.getElementById("mCatchQuote").style.display = "inline";
-    document.getElementById("catchEditLink").style.display = "block";
   } else {
     document.getElementById("mCatchWrap").style.display = "none";
   }
@@ -510,19 +509,17 @@ fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
   symbolNotes = data || {};
 }).catch(() => {});
 
-document.getElementById("catchEditLink").addEventListener("click", () => {
+document.getElementById("mCatchQuote").addEventListener("click", () => {
   const card = currentGridList[currentModalIndex];
   if (!card) return;
   document.getElementById("catchEditTextarea").value = getCardFieldText(card, "catchphrase");
   document.getElementById("mCatchQuote").style.display = "none";
-  document.getElementById("catchEditLink").style.display = "none";
   document.getElementById("catchEditArea").classList.add("show");
   document.getElementById("catchEditSaved").classList.remove("show");
 });
 document.getElementById("catchEditCancelBtn").addEventListener("click", () => {
   document.getElementById("catchEditArea").classList.remove("show");
   document.getElementById("mCatchQuote").style.display = "inline";
-  document.getElementById("catchEditLink").style.display = "block";
 });
 document.getElementById("catchEditSaveBtn").addEventListener("click", () => {
   const card = currentGridList[currentModalIndex];
@@ -539,7 +536,6 @@ document.getElementById("catchEditSaveBtn").addEventListener("click", () => {
     document.getElementById("mCatch").textContent = newText;
     document.getElementById("catchEditArea").classList.remove("show");
     document.getElementById("mCatchQuote").style.display = "inline";
-    document.getElementById("catchEditLink").style.display = "block";
     const savedEl = document.getElementById("catchEditSaved");
     savedEl.classList.add("show");
     setTimeout(() => savedEl.classList.remove("show"), 2000);

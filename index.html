@@ -203,6 +203,7 @@
     font-family:'Kosugi Maru',sans-serif; font-style:italic; font-size:15px; color:#e8cd8f; line-height:1.5;
   }
   .catch-edit-link { display:block; margin-top:4px; font-style:normal; }
+  .catch-quote-tap { cursor:pointer; }
   .tag-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
   .age-badge {
     background: var(--surface-hover); border:1px solid var(--border); border-radius:999px;
@@ -813,8 +814,7 @@
       <div class="modal-titleen" id="mTitleEn"></div>
       <div class="kw-row" id="mKeywords"></div>
       <div class="catch-badge" id="mCatchWrap" style="display:none;">
-        <span id="mCatchQuote">&ldquo;<span id="mCatch"></span>&rdquo;</span>
-        <span class="symbol-edit-link catch-edit-link" id="catchEditLink">編集</span>
+        <span id="mCatchQuote" class="catch-quote-tap">&ldquo;<span id="mCatch"></span>&rdquo;</span>
         <div class="symbol-edit-area" id="catchEditArea">
           <textarea id="catchEditTextarea" style="min-height:60px;"></textarea>
           <div class="symbol-edit-btns">
