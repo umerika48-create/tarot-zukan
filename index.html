@@ -205,20 +205,18 @@
   .catch-edit-link { display:block; margin-top:4px; font-style:normal; }
   .catch-quote-tap { cursor:pointer; }
   .tag-row {
-    display:flex; flex-wrap:wrap; margin-bottom:18px;
-    border:1px solid var(--gold-dim); border-radius:12px; overflow:hidden;
+    display:flex; flex-wrap:wrap; gap:16px; margin-bottom:18px; row-gap:10px;
   }
   .age-badge {
-    background:transparent; border:none; border-right:1px solid var(--gold-dim);
-    padding:8px 14px; font-size:12.5px; color:var(--text-dim);
+    background:none; border:none; padding:0 0 4px; font-size:12.5px; color:var(--text-dim);
+    display:inline-flex; align-items:center; gap:5px;
   }
   .story-tag {
-    background: var(--gold); border:none; border-right:1px solid var(--gold-dim);
-    padding:8px 14px; font-size:12.5px; color:#1a1508; font-weight:700; cursor:pointer;
-    transition: background .15s ease;
+    background:none; border:none; border-bottom:1.5px solid var(--gold);
+    padding:0 0 4px; font-size:12.5px; color:#e8cd8f; font-weight:600; cursor:pointer;
+    display:inline-flex; align-items:center; gap:5px; transition: color .15s ease;
   }
-  .story-tag:hover { background: #ddb96f; }
-  .tag-row > *:last-child { border-right:none; }
+  .story-tag:hover { color: var(--gold); }
 
   .story-popup {
     margin-top: 4px; background: var(--surface-hover); border:1px solid var(--rose-dim);
@@ -892,11 +890,11 @@
       </div>
       <div class="tag-row" id="mTagRow" style="display:none;">
         <span class="age-badge" id="mAge"></span>
-        <span class="story-tag" id="mSituationTag">現状</span>
-        <span class="story-tag" id="mPlaceTag">場所</span>
-        <span class="story-tag" id="mStoryTag">ストーリー</span>
-        <span class="story-tag" id="mConnTag">前後のつながり</span>
-        <span class="story-tag" id="mMnemonicTag">覚え方</span>
+        <span class="story-tag" id="mSituationTag">◐ 現状</span>
+        <span class="story-tag" id="mPlaceTag">◈ 場所</span>
+        <span class="story-tag" id="mStoryTag">📖 ストーリー</span>
+        <span class="story-tag" id="mConnTag">🔗 前後のつながり</span>
+        <span class="story-tag" id="mMnemonicTag">💡 覚え方</span>
       </div>
       <div class="story-popup" id="mSituationPopup">
         <div class="sp-h" id="mSituationHeader">現状</div>
