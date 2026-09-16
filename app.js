@@ -309,7 +309,7 @@ function openModal(c) {
   if (hasAnyTag) {
     document.getElementById("mTagRow").style.display = "flex";
     document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
-    document.getElementById("mAge").textContent = c.age_range ? "⏳ " + c.age_range : "";
+    document.getElementById("mAge").textContent = c.age_range || "";
     document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
     document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
     document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
