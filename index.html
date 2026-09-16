@@ -204,17 +204,21 @@
   }
   .catch-edit-link { display:block; margin-top:4px; font-style:normal; }
   .catch-quote-tap { cursor:pointer; }
-  .tag-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .tag-row {
+    display:flex; flex-wrap:wrap; margin-bottom:18px;
+    border:1px solid var(--gold-dim); border-radius:12px; overflow:hidden;
+  }
   .age-badge {
-    background: var(--surface-hover); border:1px solid var(--border); border-radius:999px;
-    padding:6px 14px; font-size:12.5px; color:var(--text-dim);
+    background:transparent; border:none; border-right:1px solid var(--gold-dim);
+    padding:8px 14px; font-size:12.5px; color:var(--text-dim);
   }
   .story-tag {
-    background: rgba(181,97,90,.12); border:1px solid var(--rose-dim); border-radius:999px;
-    padding:6px 14px; font-size:12.5px; color:#e39a95; font-weight:700; cursor:pointer;
-    transition: all .15s ease;
+    background: var(--gold); border:none; border-right:1px solid var(--gold-dim);
+    padding:8px 14px; font-size:12.5px; color:#1a1508; font-weight:700; cursor:pointer;
+    transition: background .15s ease;
   }
-  .story-tag:hover { background: rgba(181,97,90,.22); }
+  .story-tag:hover { background: #ddb96f; }
+  .tag-row > *:last-child { border-right:none; }
 
   .story-popup {
     margin-top: 4px; background: var(--surface-hover); border:1px solid var(--rose-dim);
