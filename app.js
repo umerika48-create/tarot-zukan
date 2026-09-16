@@ -299,6 +299,7 @@ function openModal(c) {
   ["mSituationText","mPlaceText","mStoryText","mConnPrev","mConnNext","mConnContrast"].forEach(id => {
     document.getElementById(id).style.display = "block";
   });
+  document.getElementById("addSymbolArea").classList.remove("show");
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
@@ -392,6 +393,8 @@ function openModal(c) {
   } else {
     document.getElementById("viewToggle").style.display = "none";
   }
+  renderAddedChips(c);
+  document.getElementById("addSymbolArea").classList.remove("show");
   document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
   if (c.current_situation) {
     document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
@@ -494,6 +497,7 @@ function openSymbolDetail(card, index) {
   const s = card.symbols[index];
   currentSymbolDetailCard = card;
   currentSymbolDetailIndex = index;
+  currentAddedSymbolId = null;
   document.getElementById("symbolDetailEyebrow").textContent = card.name_jp + " のシンボル";
   document.getElementById("symbolDetailTitle").textContent = getSymbolTitle(card, index);
   document.getElementById("symbolDetailText").textContent = getSymbolText(card, index);
@@ -501,6 +505,7 @@ function openSymbolDetail(card, index) {
   document.getElementById("symbolEditSaved").classList.remove("show");
   document.getElementById("symbolDetailText").style.display = "block";
   document.getElementById("symbolDetailTitle").style.display = "block";
+  document.getElementById("symbolDeleteBtn").style.display = "none";
   symbolDetailBackdrop.classList.remove("hidden");
 }
 let currentSymbolDetailCard = null;
@@ -592,6 +597,71 @@ fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
   symbolNotes = data || {};
 }).catch(() => {});
 
+let addedSymbols = {};
+let currentAddedSymbolId = null;
+fetch("/api/added-symbols").then(r => r.ok ? r.json() : {}).then(data => {
+  addedSymbols = data || {};
+}).catch(() => {});
+
+function renderAddedChips(card) {
+  const chipRow = document.getElementById("mSymbolChipRow");
+  chipRow.querySelectorAll(".added-symbol-chip").forEach(el => el.remove());
+  (addedSymbols[card.id] || []).forEach(s => {
+    const chip = document.createElement("span");
+    chip.className = "symbol-chip added-symbol-chip";
+    chip.textContent = s.label;
+    chip.addEventListener("click", () => openAddedSymbolDetail(card, s));
+    chipRow.appendChild(chip);
+  });
+}
+
+function openAddedSymbolDetail(card, s) {
+  currentSymbolDetailCard = card;
+  currentSymbolDetailIndex = null;
+  currentAddedSymbolId = s.id;
+  document.getElementById("symbolDetailEyebrow").textContent = card.name_jp + " のシンボル";
+  document.getElementById("symbolDetailTitle").textContent = s.title;
+  document.getElementById("symbolDetailText").textContent = s.text;
+  document.getElementById("symbolEditArea").classList.remove("show");
+  document.getElementById("symbolEditSaved").classList.remove("show");
+  document.getElementById("symbolDetailText").style.display = "block";
+  document.getElementById("symbolDetailTitle").style.display = "block";
+  document.getElementById("symbolDeleteBtn").style.display = "inline-block";
+  symbolDetailBackdrop.classList.remove("hidden");
+}
+
+document.getElementById("addSymbolLink").addEventListener("click", () => {
+  document.getElementById("addSymbolLabelInput").value = "";
+  document.getElementById("addSymbolTitleInput").value = "";
+  document.getElementById("addSymbolTextInput").value = "";
+  document.getElementById("addSymbolArea").classList.add("show");
+});
+document.getElementById("addSymbolCancelBtn").addEventListener("click", () => {
+  document.getElementById("addSymbolArea").classList.remove("show");
+});
+document.getElementById("addSymbolSaveBtn").addEventListener("click", () => {
+  const card = currentGridList[currentModalIndex];
+  if (!card) return;
+  const label = document.getElementById("addSymbolLabelInput").value.trim();
+  const title = document.getElementById("addSymbolTitleInput").value.trim();
+  const text = document.getElementById("addSymbolTextInput").value.trim();
+  if (!label || !title || !text) {
+    alert("ラベル・タイトル・説明文をすべて入力してください。");
+    return;
+  }
+  fetch("/api/added-symbols", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cardId: card.id, label: label, title: title, text: text })
+  }).then(r => r.json()).then(data => {
+    if (data && data.symbols) addedSymbols[card.id] = data.symbols;
+    renderAddedChips(card);
+    document.getElementById("addSymbolArea").classList.remove("show");
+  }).catch(() => {
+    alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
+
 document.getElementById("mCatchQuote").addEventListener("click", () => {
   const card = currentGridList[currentModalIndex];
   if (!card) return;
@@ -628,8 +698,15 @@ document.getElementById("catchEditSaveBtn").addEventListener("click", () => {
 });
 document.getElementById("symbolEditLink").addEventListener("click", () => {
   if (!currentSymbolDetailCard) return;
-  document.getElementById("symbolEditTitleInput").value = getSymbolTitle(currentSymbolDetailCard, currentSymbolDetailIndex);
-  document.getElementById("symbolEditTextarea").value = getSymbolText(currentSymbolDetailCard, currentSymbolDetailIndex);
+  if (currentAddedSymbolId) {
+    const s = (addedSymbols[currentSymbolDetailCard.id] || []).find(x => x.id === currentAddedSymbolId);
+    if (!s) return;
+    document.getElementById("symbolEditTitleInput").value = s.title;
+    document.getElementById("symbolEditTextarea").value = s.text;
+  } else {
+    document.getElementById("symbolEditTitleInput").value = getSymbolTitle(currentSymbolDetailCard, currentSymbolDetailIndex);
+    document.getElementById("symbolEditTextarea").value = getSymbolText(currentSymbolDetailCard, currentSymbolDetailIndex);
+  }
   document.getElementById("symbolDetailText").style.display = "none";
   document.getElementById("symbolDetailTitle").style.display = "none";
   document.getElementById("symbolEditArea").classList.add("show");
@@ -645,6 +722,30 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
   const newTitle = document.getElementById("symbolEditTitleInput").value.trim();
   const newText = document.getElementById("symbolEditTextarea").value.trim();
   if (!newTitle || !newText) return;
+  const card = currentSymbolDetailCard;
+  if (currentAddedSymbolId) {
+    const s = (addedSymbols[card.id] || []).find(x => x.id === currentAddedSymbolId);
+    const label = s ? s.label : newTitle;
+    fetch("/api/added-symbols", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cardId: card.id, id: currentAddedSymbolId, label: label, title: newTitle, text: newText })
+    }).then(r => r.json()).then(data => {
+      if (data && data.symbols) addedSymbols[card.id] = data.symbols;
+      document.getElementById("symbolDetailTitle").textContent = newTitle;
+      document.getElementById("symbolDetailText").textContent = newText;
+      document.getElementById("symbolEditArea").classList.remove("show");
+      document.getElementById("symbolDetailText").style.display = "block";
+      document.getElementById("symbolDetailTitle").style.display = "block";
+      renderAddedChips(card);
+      const savedEl = document.getElementById("symbolEditSaved");
+      savedEl.classList.add("show");
+      setTimeout(() => savedEl.classList.remove("show"), 2000);
+    }).catch(() => {
+      alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+    });
+    return;
+  }
   const key = symbolNoteKey(currentSymbolDetailCard, currentSymbolDetailIndex);
   fetch("/api/symbol-notes", {
     method: "POST",
@@ -662,6 +763,22 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
     setTimeout(() => savedEl.classList.remove("show"), 2000);
   }).catch(() => {
     alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
+document.getElementById("symbolDeleteBtn").addEventListener("click", () => {
+  if (!currentSymbolDetailCard || !currentAddedSymbolId) return;
+  if (!confirm("このラベルを削除しますか？")) return;
+  const card = currentSymbolDetailCard;
+  fetch("/api/added-symbols", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cardId: card.id, id: currentAddedSymbolId, delete: true })
+  }).then(r => r.json()).then(data => {
+    if (data && data.symbols) addedSymbols[card.id] = data.symbols;
+    renderAddedChips(card);
+    symbolDetailBackdrop.classList.add("hidden");
+  }).catch(() => {
+    alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));

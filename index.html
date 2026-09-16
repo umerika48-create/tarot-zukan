@@ -269,6 +269,7 @@
     font-size:12.5px; padding:6px 14px; border-radius:14px; cursor:pointer; font-family:inherit;
     border:1px solid var(--border); background:var(--surface-2); color:var(--text);
   }
+  .symbol-edit-btns button.delete { color:#e08a8a; border-color:#6b3a3a; margin-left:auto; }
   .symbol-edit-btns button.save { background:var(--gold); color:#1a1508; border-color:var(--gold); }
   .symbol-edit-saved { font-size:11.5px; color:var(--gold); margin-top:6px; display:none; }
   .symbol-edit-saved.show { display:block; }
@@ -958,6 +959,16 @@
           <div class="symbol-edit-saved" id="storyEditSaved">保存しました</div>
         </div>
         <div class="symbol-chip-row" id="mSymbolChipRow"></div>
+        <span class="symbol-edit-link" id="addSymbolLink">＋ ラベルを追加</span>
+        <div class="symbol-edit-area" id="addSymbolArea">
+          <input type="text" id="addSymbolLabelInput" class="symbol-edit-title-input" placeholder="ラベル（例：白いバラ）">
+          <input type="text" id="addSymbolTitleInput" class="symbol-edit-title-input" placeholder="詳細タイトル（例：胸元の白いバラ）">
+          <textarea id="addSymbolTextInput" placeholder="説明文"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="addSymbolSaveBtn">保存</button>
+            <button type="button" id="addSymbolCancelBtn">キャンセル</button>
+          </div>
+        </div>
       </div>
       <div class="story-popup" id="mConnPopup">
         <div class="sp-h">前後のカードとのつながり</div>
@@ -1044,6 +1055,7 @@
       <div class="symbol-edit-btns">
         <button type="button" class="save" id="symbolEditSaveBtn">保存</button>
         <button type="button" id="symbolEditCancelBtn">キャンセル</button>
+        <button type="button" class="delete" id="symbolDeleteBtn" style="display:none;">削除</button>
       </div>
       <div class="symbol-edit-saved" id="symbolEditSaved">保存しました</div>
     </div>
