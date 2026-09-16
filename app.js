@@ -284,7 +284,11 @@ function openModal(c) {
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
-    document.getElementById("mCatch").textContent = c.catchphrase;
+    document.getElementById("mCatch").textContent = getCardFieldText(c, "catchphrase");
+    document.getElementById("catchEditArea").classList.remove("show");
+    document.getElementById("catchEditSaved").classList.remove("show");
+    document.getElementById("mCatchQuote").style.display = "inline";
+    document.getElementById("catchEditLink").style.display = "block";
   } else {
     document.getElementById("mCatchWrap").style.display = "none";
   }
@@ -487,6 +491,11 @@ let symbolNotes = {};
 function symbolNoteKey(card, index) {
   return card.id + ":" + index;
 }
+function getCardFieldText(card, field) {
+  const key = card.id + ":" + field;
+  const note = symbolNotes[key];
+  return (note && note.text) ? note.text : card[field];
+}
 function getSymbolTitle(card, index) {
   const key = symbolNoteKey(card, index);
   const note = symbolNotes[key];
@@ -501,6 +510,43 @@ fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
   symbolNotes = data || {};
 }).catch(() => {});
 
+document.getElementById("catchEditLink").addEventListener("click", () => {
+  const card = currentGridList[currentModalIndex];
+  if (!card) return;
+  document.getElementById("catchEditTextarea").value = getCardFieldText(card, "catchphrase");
+  document.getElementById("mCatchQuote").style.display = "none";
+  document.getElementById("catchEditLink").style.display = "none";
+  document.getElementById("catchEditArea").classList.add("show");
+  document.getElementById("catchEditSaved").classList.remove("show");
+});
+document.getElementById("catchEditCancelBtn").addEventListener("click", () => {
+  document.getElementById("catchEditArea").classList.remove("show");
+  document.getElementById("mCatchQuote").style.display = "inline";
+  document.getElementById("catchEditLink").style.display = "block";
+});
+document.getElementById("catchEditSaveBtn").addEventListener("click", () => {
+  const card = currentGridList[currentModalIndex];
+  if (!card) return;
+  const newText = document.getElementById("catchEditTextarea").value.trim();
+  if (!newText) return;
+  const key = card.id + ":catchphrase";
+  fetch("/api/symbol-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key: key, text: newText })
+  }).then(r => r.json()).then(() => {
+    symbolNotes[key] = { text: newText };
+    document.getElementById("mCatch").textContent = newText;
+    document.getElementById("catchEditArea").classList.remove("show");
+    document.getElementById("mCatchQuote").style.display = "inline";
+    document.getElementById("catchEditLink").style.display = "block";
+    const savedEl = document.getElementById("catchEditSaved");
+    savedEl.classList.add("show");
+    setTimeout(() => savedEl.classList.remove("show"), 2000);
+  }).catch(() => {
+    alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
 document.getElementById("symbolEditLink").addEventListener("click", () => {
   if (!currentSymbolDetailCard) return;
   document.getElementById("symbolEditTitleInput").value = getSymbolTitle(currentSymbolDetailCard, currentSymbolDetailIndex);

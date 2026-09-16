@@ -202,6 +202,7 @@
     border-radius:8px; padding:10px 14px; margin-bottom:12px;
     font-family:'Kosugi Maru',sans-serif; font-style:italic; font-size:15px; color:#e8cd8f; line-height:1.5;
   }
+  .catch-edit-link { display:block; margin-top:4px; font-style:normal; }
   .tag-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
   .age-badge {
     background: var(--surface-hover); border:1px solid var(--border); border-radius:999px;
@@ -811,7 +812,18 @@
       <div class="modal-title" id="mTitle"></div>
       <div class="modal-titleen" id="mTitleEn"></div>
       <div class="kw-row" id="mKeywords"></div>
-      <div class="catch-badge" id="mCatchWrap" style="display:none;">&ldquo;<span id="mCatch"></span>&rdquo;</div>
+      <div class="catch-badge" id="mCatchWrap" style="display:none;">
+        <span id="mCatchQuote">&ldquo;<span id="mCatch"></span>&rdquo;</span>
+        <span class="symbol-edit-link catch-edit-link" id="catchEditLink">編集</span>
+        <div class="symbol-edit-area" id="catchEditArea">
+          <textarea id="catchEditTextarea" style="min-height:60px;"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="catchEditSaveBtn">保存</button>
+            <button type="button" id="catchEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="catchEditSaved">保存しました</div>
+        </div>
+      </div>
       <div class="tag-row" id="mTagRow" style="display:none;">
         <span class="age-badge" id="mAge"></span>
         <span class="story-tag" id="mSituationTag">現状</span>
