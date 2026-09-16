@@ -4,9 +4,15 @@
 - index.html の <script src> をすべてインライン化
 - 各 cards.js 内の img パスを base64 データURIに置換
 - Google Fonts の <link> を @font-face（base64埋め込み）に置換
+- symbol-notes-snapshot.json があれば、KV(/api/symbol-notes)の編集内容を各カードデータにマージしてから焼き込む
 出力: index_offline.html
+
+symbol-notes-snapshot.json の作り方:
+  ブラウザで https://tarot-zukan.pages.dev/api/symbol-notes を開き、
+  表示されたJSONをそのまま同名ファイルとしてこのフォルダに保存する。
 """
 import re
+import json
 import base64
 import mimetypes
 import os
@@ -28,11 +34,17 @@ def to_data_uri(rel_path):
     b64 = base64.b64encode(data).decode("ascii")
     return f"data:{mime};base64,{b64}"
 
+# 各ファイルの中の変数名（cards.js: CARDS, marseille_cards.js: MARSEILLE_CARDS, ...）
 JS_FILES = [
-    "cards.js", "marseille_cards.js", "lenormand_cards.js", "rune_cards.js",
-    "heart_oracle_cards.js", "step_oracle_cards.js", "answer_oracle_cards.js",
-    "spreads.js", "courses.js", "timing.js", "app.js",
+    ("cards.js", "CARDS"),
+    ("marseille_cards.js", "MARSEILLE_CARDS"),
+    ("lenormand_cards.js", "LENORMAND_CARDS"),
+    ("rune_cards.js", "RUNE_CARDS"),
+    ("heart_oracle_cards.js", "HEART_ORACLE_CARDS"),
+    ("step_oracle_cards.js", "STEP_ORACLE_CARDS"),
+    ("answer_oracle_cards.js", "ANSWER_ORACLE_CARDS"),
 ]
+NON_DATA_JS_FILES = ["spreads.js", "courses.js", "timing.js", "app.js"]
 
 IMG_PATH_RE = re.compile(r'"img":\s*"([^"]+\.(?:jpg|jpeg|png))"')
 
@@ -46,6 +58,58 @@ def inline_images_in_js(js_text):
             return m.group(0)
         return f'"img": "{uri}"'
     return IMG_PATH_RE.sub(repl, js_text)
+
+def load_symbol_notes():
+    path = os.path.join(ROOT, "symbol-notes-snapshot.json")
+    if not os.path.exists(path):
+        print("symbol-notes-snapshot.json が無いため、KVの編集内容は取り込まずビルドします。")
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        notes = json.load(f)
+    print(f"symbol-notes-snapshot.json を読み込みました（{len(notes)}件の編集）")
+    return notes
+
+def apply_notes_to_cards(cards, notes):
+    applied = 0
+    by_id = {c["id"]: c for c in cards if "id" in c}
+    for key, note in notes.items():
+        if ":" not in key:
+            continue
+        card_id, field = key.split(":", 1)
+        card = by_id.get(card_id)
+        if not card:
+            continue
+        if field.isdigit():
+            idx = int(field)
+            symbols = card.get("symbols") or []
+            if 0 <= idx < len(symbols):
+                if note.get("title"):
+                    symbols[idx]["title"] = note["title"]
+                if note.get("text"):
+                    symbols[idx]["text"] = note["text"]
+                applied += 1
+        else:
+            if note.get("text"):
+                card[field] = note["text"]
+                applied += 1
+    return applied
+
+def process_data_js(filename, varname, notes):
+    js_text = read(filename)
+    m = re.search(r"const " + varname + r" = (\[.*\]);", js_text, re.S)
+    if not m:
+        print(f"  WARNING: {filename} 内に {varname} が見つかりません。画像インライン化のみ行います。")
+        return inline_images_in_js(js_text)
+    cards = json.loads(m.group(1))
+    applied = apply_notes_to_cards(cards, notes)
+    if applied:
+        print(f"  {filename}: {applied}件のKV編集をマージしました")
+    new_json = json.dumps(cards, ensure_ascii=False)
+    js_text = js_text[:m.start(1)] + new_json + js_text[m.end(1):]
+    if IMG_PATH_RE.search(js_text):
+        print(f"inlining images in {filename} ...")
+        js_text = inline_images_in_js(js_text)
+    return js_text
 
 FONT_PACKAGES = {
     "Kosugi Maru": ("@fontsource/kosugi-maru/files/kosugi-maru-japanese-400-normal.woff2", "normal", "400"),
@@ -80,6 +144,7 @@ def build_font_face_css():
 
 def main():
     html = read("index.html")
+    notes = load_symbol_notes()
 
     # 1) Google Fonts link を @font-face に置換
     font_css = build_font_face_css()
@@ -92,12 +157,15 @@ def main():
         f"<style>\n{font_css}\n</style>", html
     )
 
-    # 2) 各 script src をインライン化（画像はcards.js系のみ置換対象）
-    for jsf in JS_FILES:
+    # 2) カードデータ系ファイル：KV編集をマージしてから画像をインライン化
+    for filename, varname in JS_FILES:
+        js_text = process_data_js(filename, varname, notes)
+        tag = f'<script src="{filename}"></script>'
+        html = html.replace(tag, f"<script>\n{js_text}\n</script>")
+
+    # 3) それ以外の script src はそのままインライン化
+    for jsf in NON_DATA_JS_FILES:
         js_text = read(jsf)
-        if IMG_PATH_RE.search(js_text):
-            print(f"inlining images in {jsf} ...")
-            js_text = inline_images_in_js(js_text)
         tag = f'<script src="{jsf}"></script>'
         html = html.replace(tag, f"<script>\n{js_text}\n</script>")
 
@@ -109,3 +177,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
