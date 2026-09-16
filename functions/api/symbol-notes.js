@@ -1,6 +1,6 @@
 // カード詳細のシンボル説明を、アプリの編集画面から書き換えられるようにするためのAPI。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "symbol-notes" のJSONオブジェクトとして
-// { "m01:0": "編集後の本文", "m02:3": "..." } の形でまとめて保存する。
+// { "m01:0": {"title":"編集後のタイトル","text":"編集後の本文"}, "m02:3": {...} } の形でまとめて保存する。
 
 export async function onRequestGet(context) {
   const { env } = context;
@@ -22,16 +22,17 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json();
     const key = (body && body.key || "").toString();
+    const title = (body && body.title || "").toString();
     const text = (body && body.text || "").toString();
-    if (!key || !text) {
-      return new Response(JSON.stringify({ ok: false, error: "key and text are required" }), {
+    if (!key || !text || !title) {
+      return new Response(JSON.stringify({ ok: false, error: "key, title and text are required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
     }
     const raw = await env.TAROT_KV.get("symbol-notes");
     const data = raw ? JSON.parse(raw) : {};
-    data[key] = text;
+    data[key] = { title: title, text: text };
     await env.TAROT_KV.put("symbol-notes", JSON.stringify(data));
     return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" }

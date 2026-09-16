@@ -244,6 +244,11 @@
   .symbol-edit-link:hover { opacity:.9; }
   .symbol-edit-area { display:none; margin-top:10px; }
   .symbol-edit-area.show { display:block; }
+  .symbol-edit-area .symbol-edit-title-input {
+    width:100%; box-sizing:border-box; margin-bottom:8px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); font-family:'Kosugi Maru',sans-serif; font-size:16px; padding:8px 10px;
+  }
   .symbol-edit-area textarea {
     width:100%; min-height:110px; resize:vertical; box-sizing:border-box;
     background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
@@ -883,6 +888,7 @@
     <p id="symbolDetailText"></p>
     <span class="symbol-edit-link" id="symbolEditLink">編集</span>
     <div class="symbol-edit-area" id="symbolEditArea">
+      <input type="text" id="symbolEditTitleInput" class="symbol-edit-title-input">
       <textarea id="symbolEditTextarea"></textarea>
       <div class="symbol-edit-btns">
         <button type="button" class="save" id="symbolEditSaveBtn">保存</button>

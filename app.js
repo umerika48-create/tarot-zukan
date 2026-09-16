@@ -473,11 +473,12 @@ function openSymbolDetail(card, index) {
   currentSymbolDetailCard = card;
   currentSymbolDetailIndex = index;
   document.getElementById("symbolDetailEyebrow").textContent = card.name_jp + " のシンボル";
-  document.getElementById("symbolDetailTitle").textContent = s.title;
+  document.getElementById("symbolDetailTitle").textContent = getSymbolTitle(card, index);
   document.getElementById("symbolDetailText").textContent = getSymbolText(card, index);
   document.getElementById("symbolEditArea").classList.remove("show");
   document.getElementById("symbolEditSaved").classList.remove("show");
   document.getElementById("symbolDetailText").style.display = "block";
+  document.getElementById("symbolDetailTitle").style.display = "block";
   symbolDetailBackdrop.classList.remove("hidden");
 }
 let currentSymbolDetailCard = null;
@@ -486,9 +487,15 @@ let symbolNotes = {};
 function symbolNoteKey(card, index) {
   return card.id + ":" + index;
 }
+function getSymbolTitle(card, index) {
+  const key = symbolNoteKey(card, index);
+  const note = symbolNotes[key];
+  return (note && note.title) ? note.title : card.symbols[index].title;
+}
 function getSymbolText(card, index) {
   const key = symbolNoteKey(card, index);
-  return (symbolNotes[key] !== undefined) ? symbolNotes[key] : card.symbols[index].text;
+  const note = symbolNotes[key];
+  return (note && note.text) ? note.text : card.symbols[index].text;
 }
 fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
   symbolNotes = data || {};
@@ -496,29 +503,35 @@ fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
 
 document.getElementById("symbolEditLink").addEventListener("click", () => {
   if (!currentSymbolDetailCard) return;
+  document.getElementById("symbolEditTitleInput").value = getSymbolTitle(currentSymbolDetailCard, currentSymbolDetailIndex);
   document.getElementById("symbolEditTextarea").value = getSymbolText(currentSymbolDetailCard, currentSymbolDetailIndex);
   document.getElementById("symbolDetailText").style.display = "none";
+  document.getElementById("symbolDetailTitle").style.display = "none";
   document.getElementById("symbolEditArea").classList.add("show");
   document.getElementById("symbolEditSaved").classList.remove("show");
 });
 document.getElementById("symbolEditCancelBtn").addEventListener("click", () => {
   document.getElementById("symbolEditArea").classList.remove("show");
   document.getElementById("symbolDetailText").style.display = "block";
+  document.getElementById("symbolDetailTitle").style.display = "block";
 });
 document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
   if (!currentSymbolDetailCard) return;
+  const newTitle = document.getElementById("symbolEditTitleInput").value.trim();
   const newText = document.getElementById("symbolEditTextarea").value.trim();
-  if (!newText) return;
+  if (!newTitle || !newText) return;
   const key = symbolNoteKey(currentSymbolDetailCard, currentSymbolDetailIndex);
   fetch("/api/symbol-notes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: key, text: newText })
+    body: JSON.stringify({ key: key, title: newTitle, text: newText })
   }).then(r => r.json()).then(() => {
-    symbolNotes[key] = newText;
+    symbolNotes[key] = { title: newTitle, text: newText };
+    document.getElementById("symbolDetailTitle").textContent = newTitle;
     document.getElementById("symbolDetailText").textContent = newText;
     document.getElementById("symbolEditArea").classList.remove("show");
     document.getElementById("symbolDetailText").style.display = "block";
+    document.getElementById("symbolDetailTitle").style.display = "block";
     const savedEl = document.getElementById("symbolEditSaved");
     savedEl.classList.add("show");
     setTimeout(() => savedEl.classList.remove("show"), 2000);
