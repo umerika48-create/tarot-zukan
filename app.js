@@ -242,7 +242,7 @@ function openModal(c) {
   document.getElementById("modalImg").alt = c.name_jp;
   document.getElementById("mTitle").textContent = c.arcana === "major" ? c.number + ". " + c.name_jp : c.name_jp;
   document.getElementById("mTitleEn").textContent = c.name_en;
-  document.getElementById("mKeywords").innerHTML = c.keywords.map(k => `<span class="kw">${k}</span>`).join("");
+  renderKeywords(c);
   document.getElementById("symbolHotspotLayer").innerHTML = "";
   document.getElementById("symbolHotspotLayer").classList.remove("show");
   document.getElementById("viewToggle").style.display = "none";
@@ -514,6 +514,20 @@ function getCardFieldText(card, field) {
   const note = symbolNotes[key];
   return (note && note.text) ? note.text : card[field];
 }
+function getKeywordsList(card) {
+  const key = card.id + ":keywords";
+  const note = symbolNotes[key];
+  if (note && note.text) {
+    try {
+      const parsed = JSON.parse(note.text);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+  return card.keywords;
+}
+function renderKeywords(c) {
+  document.getElementById("mKeywords").innerHTML = getKeywordsList(c).map(k => `<span class="kw">${k}</span>`).join("");
+}
 function getFieldOverride(card, path) {
   const key = card.id + ":" + path;
   const note = symbolNotes[key];
@@ -749,6 +763,80 @@ document.getElementById("memoDeleteBtn").addEventListener("click", () => {
     renderMemoList();
   }).catch(() => {
     alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
+
+// ---------- キーワード編集 ----------
+const kwEditBackdrop = document.getElementById("kwEditBackdrop");
+let kwEditWorkingList = [];
+
+function renderKwEditChips() {
+  const row = document.getElementById("kwEditChipRow");
+  row.innerHTML = "";
+  kwEditWorkingList.forEach((k, i) => {
+    const chip = document.createElement("span");
+    chip.className = "kw-edit-chip";
+    chip.innerHTML = `<span></span><span class="kw-remove-x">&times;</span>`;
+    chip.querySelector("span").textContent = k;
+    chip.querySelector(".kw-remove-x").addEventListener("click", () => {
+      kwEditWorkingList.splice(i, 1);
+      renderKwEditChips();
+    });
+    row.appendChild(chip);
+  });
+}
+
+document.getElementById("kwEditLink").addEventListener("click", () => {
+  const card = currentGridList[currentModalIndex];
+  if (!card) return;
+  kwEditWorkingList = getKeywordsList(card).slice();
+  renderKwEditChips();
+  document.getElementById("kwEditInput").value = "";
+  document.getElementById("kwEditSaved").classList.remove("show");
+  kwEditBackdrop.classList.remove("hidden");
+});
+document.getElementById("kwEditAddBtn").addEventListener("click", () => {
+  const input = document.getElementById("kwEditInput");
+  const val = input.value.trim();
+  if (!val) return;
+  kwEditWorkingList.push(val);
+  input.value = "";
+  renderKwEditChips();
+});
+document.getElementById("kwEditInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("kwEditAddBtn").click();
+  }
+});
+document.getElementById("kwEditCancelBtn").addEventListener("click", () => kwEditBackdrop.classList.add("hidden"));
+document.getElementById("kwEditClose").addEventListener("click", () => kwEditBackdrop.classList.add("hidden"));
+kwEditBackdrop.addEventListener("click", (e) => { if (e.target === kwEditBackdrop) kwEditBackdrop.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") kwEditBackdrop.classList.add("hidden"); });
+
+document.getElementById("kwEditSaveBtn").addEventListener("click", () => {
+  const card = currentGridList[currentModalIndex];
+  if (!card) return;
+  if (!kwEditWorkingList.length) {
+    alert("キーワードを1つ以上残してください。");
+    return;
+  }
+  const key = card.id + ":keywords";
+  fetch("/api/symbol-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key: key, text: JSON.stringify(kwEditWorkingList) })
+  }).then(r => r.json()).then(() => {
+    symbolNotes[key] = { text: JSON.stringify(kwEditWorkingList) };
+    renderKeywords(card);
+    const savedEl = document.getElementById("kwEditSaved");
+    savedEl.classList.add("show");
+    setTimeout(() => {
+      savedEl.classList.remove("show");
+      kwEditBackdrop.classList.add("hidden");
+    }, 900);
+  }).catch(() => {
+    alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
 
