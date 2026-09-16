@@ -586,6 +586,103 @@ symbolDetailBackdrop.addEventListener("click", (e) => { if (e.target === symbolD
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackdrop.classList.add("hidden"); });
 
+// ---------- MEMO ----------
+const memoBackdrop = document.getElementById("memoBackdrop");
+let cardMemos = {};
+let currentMemoCardId = null;
+let currentMemoEditId = null;
+
+fetch("/api/memos").then(r => r.ok ? r.json() : {}).then(data => {
+  cardMemos = data || {};
+}).catch(() => {});
+
+function renderMemoList() {
+  const list = cardMemos[currentMemoCardId] || [];
+  const itemsEl = document.getElementById("memoListItems");
+  const emptyEl = document.getElementById("memoListEmpty");
+  itemsEl.innerHTML = "";
+  emptyEl.style.display = list.length ? "none" : "block";
+  list.forEach(m => {
+    const row = document.createElement("div");
+    row.className = "memo-list-item";
+    row.innerHTML = `<div><div class="memo-list-item-title"></div><div class="memo-list-item-preview"></div></div><span>›</span>`;
+    row.querySelector(".memo-list-item-title").textContent = m.title;
+    row.querySelector(".memo-list-item-preview").textContent = m.text;
+    row.addEventListener("click", () => openMemoEdit(m));
+    itemsEl.appendChild(row);
+  });
+}
+
+function openMemoList(cardId) {
+  currentMemoCardId = cardId;
+  document.getElementById("memoListView").style.display = "block";
+  document.getElementById("memoEditView").classList.remove("show");
+  renderMemoList();
+  memoBackdrop.classList.remove("hidden");
+}
+
+function openMemoEdit(memo) {
+  currentMemoEditId = memo ? memo.id : null;
+  document.getElementById("memoTitleInput").value = memo ? memo.title : "";
+  document.getElementById("memoTextInput").value = memo ? memo.text : "";
+  document.getElementById("memoDeleteBtn").style.display = memo ? "inline-block" : "none";
+  document.getElementById("memoListView").style.display = "none";
+  document.getElementById("memoEditView").classList.add("show");
+}
+
+document.getElementById("memoTag").addEventListener("click", () => {
+  const card = currentGridList[currentModalIndex];
+  if (!card) return;
+  openMemoList(card.id);
+});
+document.getElementById("memoAddBtn").addEventListener("click", () => openMemoEdit(null));
+document.getElementById("memoBackLink").addEventListener("click", () => {
+  document.getElementById("memoEditView").classList.remove("show");
+  document.getElementById("memoListView").style.display = "block";
+  renderMemoList();
+});
+document.getElementById("memoClose").addEventListener("click", () => memoBackdrop.classList.add("hidden"));
+memoBackdrop.addEventListener("click", (e) => { if (e.target === memoBackdrop) memoBackdrop.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") memoBackdrop.classList.add("hidden"); });
+
+document.getElementById("memoSaveBtn").addEventListener("click", () => {
+  const title = document.getElementById("memoTitleInput").value.trim();
+  const text = document.getElementById("memoTextInput").value.trim();
+  if (!title || !text) return;
+  fetch("/api/memos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cardId: currentMemoCardId, id: currentMemoEditId, title, text })
+  }).then(r => r.json()).then(data => {
+    if (data && data.memos) cardMemos[currentMemoCardId] = data.memos;
+    document.getElementById("memoEditView").classList.remove("show");
+    document.getElementById("memoListView").style.display = "block";
+    renderMemoList();
+  }).catch(() => {
+    alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
+document.getElementById("memoCancelBtn").addEventListener("click", () => {
+  document.getElementById("memoEditView").classList.remove("show");
+  document.getElementById("memoListView").style.display = "block";
+});
+document.getElementById("memoDeleteBtn").addEventListener("click", () => {
+  if (!currentMemoEditId) return;
+  if (!confirm("このメモを削除しますか？")) return;
+  fetch("/api/memos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cardId: currentMemoCardId, id: currentMemoEditId, delete: true })
+  }).then(r => r.json()).then(data => {
+    if (data && data.memos) cardMemos[currentMemoCardId] = data.memos;
+    document.getElementById("memoEditView").classList.remove("show");
+    document.getElementById("memoListView").style.display = "block";
+    renderMemoList();
+  }).catch(() => {
+    alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
+
 // ---------- 1枚引く ----------
 let drawnCard = null, drawnReversed = false;
 let drawMode = "reading"; // "reading" | "timing"
