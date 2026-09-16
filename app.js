@@ -293,6 +293,12 @@ function openModal(c) {
   placePopup.classList.remove("show");
   connPopup.classList.remove("show");
   mnemonicPopup.classList.remove("show");
+  ["situationEditArea","placeEditArea","storyEditArea","connPrevEditArea","connNextEditArea","connContrastEditArea"].forEach(id => {
+    document.getElementById(id).classList.remove("show");
+  });
+  ["mSituationText","mPlaceText","mStoryText","mConnPrev","mConnNext","mConnContrast"].forEach(id => {
+    document.getElementById(id).style.display = "block";
+  });
 
   if (c.catchphrase) {
     document.getElementById("mCatchWrap").style.display = "block";
@@ -320,11 +326,12 @@ function openModal(c) {
   }
 
   if (hasConn) {
-    document.getElementById("mConnPrev").textContent = c.connections.prev || "";
-    document.getElementById("mConnNext").textContent = c.connections.next || "";
+    document.getElementById("mConnPrev").textContent = getFieldOverride(c, "connections.prev") || "";
+    document.getElementById("mConnNext").textContent = getFieldOverride(c, "connections.next") || "";
     const contrastEl = document.getElementById("mConnContrast");
-    contrastEl.textContent = c.connections.contrast || "";
-    contrastEl.style.display = c.connections.contrast ? "block" : "none";
+    const contrastText = getFieldOverride(c, "connections.contrast");
+    contrastEl.textContent = contrastText || "";
+    contrastEl.style.display = contrastText ? "block" : "none";
   }
   if (c.mnemonic) {
     document.getElementById("mMnemonicText").textContent = c.mnemonic;
@@ -332,7 +339,7 @@ function openModal(c) {
 
   if (c.story) {
     document.getElementById("mStoryHeader").textContent = "ストーリー：" + c.name_jp;
-    document.getElementById("mStoryText").textContent = c.story;
+    document.getElementById("mStoryText").textContent = getFieldOverride(c, "story");
   }
   const chipRow = document.getElementById("mSymbolChipRow");
   chipRow.innerHTML = "";
@@ -388,11 +395,11 @@ function openModal(c) {
   document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
   if (c.current_situation) {
     document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
-    document.getElementById("mSituationText").textContent = c.current_situation;
+    document.getElementById("mSituationText").textContent = getFieldOverride(c, "current_situation");
   }
   if (c.place) {
     document.getElementById("mPlaceHeader").textContent = "出会いの場所：" + c.name_jp;
-    document.getElementById("mPlaceText").textContent = c.place;
+    document.getElementById("mPlaceText").textContent = getFieldOverride(c, "place");
   }
 
   modalBackdrop.classList.remove("hidden");
@@ -507,6 +514,56 @@ function getCardFieldText(card, field) {
   const note = symbolNotes[key];
   return (note && note.text) ? note.text : card[field];
 }
+function getFieldOverride(card, path) {
+  const key = card.id + ":" + path;
+  const note = symbolNotes[key];
+  if (note && note.text) return note.text;
+  const parts = path.split(".");
+  let val = card;
+  for (const p of parts) { val = val ? val[p] : undefined; }
+  return val || "";
+}
+function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
+  document.getElementById(pId).addEventListener("click", () => {
+    const card = currentGridList[currentModalIndex];
+    if (!card) return;
+    document.getElementById(taId).value = getFieldOverride(card, path);
+    document.getElementById(pId).style.display = "none";
+    document.getElementById(areaId).classList.add("show");
+  });
+  document.getElementById(cancelId).addEventListener("click", () => {
+    document.getElementById(areaId).classList.remove("show");
+    document.getElementById(pId).style.display = "block";
+  });
+  document.getElementById(saveId).addEventListener("click", () => {
+    const card = currentGridList[currentModalIndex];
+    if (!card) return;
+    const newText = document.getElementById(taId).value.trim();
+    if (!newText) return;
+    const key = card.id + ":" + path;
+    fetch("/api/symbol-notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: key, text: newText })
+    }).then(r => r.json()).then(() => {
+      symbolNotes[key] = { text: newText };
+      document.getElementById(pId).textContent = newText;
+      document.getElementById(areaId).classList.remove("show");
+      document.getElementById(pId).style.display = "block";
+      const savedEl = document.getElementById(savedId);
+      savedEl.classList.add("show");
+      setTimeout(() => savedEl.classList.remove("show"), 2000);
+    }).catch(() => {
+      alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+    });
+  });
+}
+setupTapEdit("mSituationText", "situationEditArea", "situationEditTextarea", "situationEditSaveBtn", "situationEditCancelBtn", "situationEditSaved", "current_situation");
+setupTapEdit("mPlaceText", "placeEditArea", "placeEditTextarea", "placeEditSaveBtn", "placeEditCancelBtn", "placeEditSaved", "place");
+setupTapEdit("mStoryText", "storyEditArea", "storyEditTextarea", "storyEditSaveBtn", "storyEditCancelBtn", "storyEditSaved", "story");
+setupTapEdit("mConnPrev", "connPrevEditArea", "connPrevEditTextarea", "connPrevEditSaveBtn", "connPrevEditCancelBtn", "connPrevEditSaved", "connections.prev");
+setupTapEdit("mConnNext", "connNextEditArea", "connNextEditTextarea", "connNextEditSaveBtn", "connNextEditCancelBtn", "connNextEditSaved", "connections.next");
+setupTapEdit("mConnContrast", "connContrastEditArea", "connContrastEditTextarea", "connContrastEditSaveBtn", "connContrastEditCancelBtn", "connContrastEditSaved", "connections.contrast");
 function getSymbolTitle(card, index) {
   const key = symbolNoteKey(card, index);
   const note = symbolNotes[key];

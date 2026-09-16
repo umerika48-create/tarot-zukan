@@ -212,11 +212,12 @@
     display:inline-flex; align-items:center; gap:5px;
   }
   .story-tag {
-    background:none; border:none; border-bottom:1.5px solid var(--gold);
+    background:none; border:none;
     padding:0 0 4px; font-size:12.5px; color:#e8cd8f; font-weight:600; cursor:pointer;
     display:inline-flex; align-items:center; gap:5px; transition: color .15s ease;
   }
   .story-tag:hover { color: var(--gold); }
+  .tap-edit-p { cursor:pointer; }
 
   .story-popup {
     margin-top: 4px; background: var(--surface-hover); border:1px solid var(--rose-dim);
@@ -898,22 +899,70 @@
       </div>
       <div class="story-popup" id="mSituationPopup">
         <div class="sp-h" id="mSituationHeader">現状</div>
-        <p id="mSituationText"></p>
+        <p id="mSituationText" class="tap-edit-p"></p>
+        <div class="symbol-edit-area" id="situationEditArea">
+          <textarea id="situationEditTextarea"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="situationEditSaveBtn">保存</button>
+            <button type="button" id="situationEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="situationEditSaved">保存しました</div>
+        </div>
       </div>
       <div class="story-popup" id="mPlacePopup">
         <div class="sp-h" id="mPlaceHeader">場所</div>
-        <p id="mPlaceText"></p>
+        <p id="mPlaceText" class="tap-edit-p"></p>
+        <div class="symbol-edit-area" id="placeEditArea">
+          <textarea id="placeEditTextarea"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="placeEditSaveBtn">保存</button>
+            <button type="button" id="placeEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="placeEditSaved">保存しました</div>
+        </div>
       </div>
       <div class="story-popup" id="mStoryPopup">
         <div class="sp-h" id="mStoryHeader">ストーリー</div>
-        <p id="mStoryText"></p>
+        <p id="mStoryText" class="tap-edit-p"></p>
+        <div class="symbol-edit-area" id="storyEditArea">
+          <textarea id="storyEditTextarea"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="storyEditSaveBtn">保存</button>
+            <button type="button" id="storyEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="storyEditSaved">保存しました</div>
+        </div>
         <div class="symbol-chip-row" id="mSymbolChipRow"></div>
       </div>
       <div class="story-popup" id="mConnPopup">
         <div class="sp-h">前後のカードとのつながり</div>
-        <p id="mConnPrev"></p>
-        <p id="mConnNext"></p>
-        <p id="mConnContrast"></p>
+        <p id="mConnPrev" class="tap-edit-p"></p>
+        <div class="symbol-edit-area" id="connPrevEditArea">
+          <textarea id="connPrevEditTextarea"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="connPrevEditSaveBtn">保存</button>
+            <button type="button" id="connPrevEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="connPrevEditSaved">保存しました</div>
+        </div>
+        <p id="mConnNext" class="tap-edit-p"></p>
+        <div class="symbol-edit-area" id="connNextEditArea">
+          <textarea id="connNextEditTextarea"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="connNextEditSaveBtn">保存</button>
+            <button type="button" id="connNextEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="connNextEditSaved">保存しました</div>
+        </div>
+        <p id="mConnContrast" class="tap-edit-p"></p>
+        <div class="symbol-edit-area" id="connContrastEditArea">
+          <textarea id="connContrastEditTextarea"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="connContrastEditSaveBtn">保存</button>
+            <button type="button" id="connContrastEditCancelBtn">キャンセル</button>
+          </div>
+          <div class="symbol-edit-saved" id="connContrastEditSaved">保存しました</div>
+        </div>
       </div>
       <div class="story-popup" id="mMnemonicPopup">
         <div class="sp-h">覚え方</div>
