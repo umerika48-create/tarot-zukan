@@ -224,6 +224,17 @@ document.querySelectorAll("#aboutModeRow .chip").forEach(chip => {
 
 // ---------- モーダル ----------
 const modalBackdrop = document.getElementById("modalBackdrop");
+function resetAccordions() {
+  document.getElementById("mUpSec").classList.add("open");
+  document.getElementById("mRvSec").classList.remove("open");
+  document.getElementById("mLoveSec").classList.remove("open");
+  document.getElementById("mWorkSec").classList.remove("open");
+}
+document.querySelectorAll(".acc-sec-h").forEach(h => {
+  h.addEventListener("click", () => {
+    h.closest(".acc-sec").classList.toggle("open");
+  });
+});
 function openModal(c) {
   currentModalIndex = currentGridList.findIndex(x => x.id === c.id);
   updateNavButtons();
@@ -237,6 +248,7 @@ function openModal(c) {
   document.getElementById("viewToggle").style.display = "none";
   document.getElementById("viewTogglePlain").classList.add("active");
   document.getElementById("viewToggleSymbol").classList.remove("active");
+  resetAccordions();
 
   if (c.deck === "lenormand" || c.deck === "rune" || c.deck === "heart_oracle" || c.deck === "step_oracle" || c.deck === "answer_oracle") {
     document.getElementById("mEyebrow").textContent =

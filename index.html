@@ -320,6 +320,20 @@
   .sec-h.lv { color: var(--rose); }
   .sec p { margin:0; font-size:14.5px; line-height:1.75; color: var(--text); }
 
+  .acc-sec { margin-bottom: 10px; border-bottom:1px solid var(--border); }
+  .acc-sec-h {
+    font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+    padding:10px 2px; user-select:none;
+  }
+  .acc-sec-h.up { color: var(--gold); }
+  .acc-sec-h.rv { color: var(--neutral); }
+  .acc-sec-h.lv { color: var(--rose); }
+  .acc-sec-h .sec-chevron { font-size:12px; transition: transform .2s ease; opacity:.7; }
+  .acc-sec.open .acc-sec-h .sec-chevron { transform: rotate(90deg); }
+  .acc-sec p { margin:0 0 14px; font-size:14.5px; line-height:1.75; color: var(--text); display:none; padding:0 2px; }
+  .acc-sec.open p { display:block; }
+
   /* DRAW VIEW */
   .draw-wrap { display:flex; flex-direction:column; align-items:center; padding-top: 24px; text-align:center; }
   .draw-lead { font-family:'Kosugi Maru',sans-serif; font-size:20px; margin-bottom:6px; }
@@ -903,10 +917,10 @@
         <div class="sp-h">覚え方</div>
         <p id="mMnemonicText"></p>
       </div>
-      <div class="sec" id="mUpSec"><div class="sec-h up" id="mUpLabel">正位置</div><p id="mUp"></p></div>
-      <div class="sec" id="mRvSec"><div class="sec-h rv">逆位置</div><p id="mRv"></p></div>
-      <div class="sec" id="mLoveSec"><div class="sec-h lv" id="mLoveLabel">恋愛での視点</div><p id="mLove"></p></div>
-      <div class="sec" id="mWorkSec"><div class="sec-h lv" id="mWorkLabel">仕事での視点</div><p id="mWork"></p></div>
+      <div class="acc-sec" id="mUpSec"><div class="acc-sec-h up" id="mUpLabel">正位置<span class="sec-chevron">&#8250;</span></div><p id="mUp"></p></div>
+      <div class="acc-sec" id="mRvSec"><div class="acc-sec-h rv">逆位置<span class="sec-chevron">&#8250;</span></div><p id="mRv"></p></div>
+      <div class="acc-sec" id="mLoveSec"><div class="acc-sec-h lv" id="mLoveLabel">恋愛での視点<span class="sec-chevron">&#8250;</span></div><p id="mLove"></p></div>
+      <div class="acc-sec" id="mWorkSec"><div class="acc-sec-h lv" id="mWorkLabel">仕事での視点<span class="sec-chevron">&#8250;</span></div><p id="mWork"></p></div>
       <div class="memo-corner"><span class="memo-tag" id="memoTag">MEMO</span></div>
     </div>
   </div>
