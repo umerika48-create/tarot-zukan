@@ -225,7 +225,7 @@ document.querySelectorAll("#aboutModeRow .chip").forEach(chip => {
 // ---------- モーダル ----------
 const modalBackdrop = document.getElementById("modalBackdrop");
 function resetAccordions() {
-  document.getElementById("mUpSec").classList.add("open");
+  document.getElementById("mUpSec").classList.remove("open");
   document.getElementById("mRvSec").classList.remove("open");
   document.getElementById("mLoveSec").classList.remove("open");
   document.getElementById("mWorkSec").classList.remove("open");
