@@ -240,7 +240,7 @@ function openModal(c) {
   updateNavButtons();
   document.getElementById("modalImg").src = c.img;
   document.getElementById("modalImg").alt = c.name_jp;
-  document.getElementById("mTitle").textContent = c.name_jp;
+  document.getElementById("mTitle").textContent = c.arcana === "major" ? c.number + ". " + c.name_jp : c.name_jp;
   document.getElementById("mTitleEn").textContent = c.name_en;
   document.getElementById("mKeywords").innerHTML = c.keywords.map(k => `<span class="kw">${k}</span>`).join("");
   document.getElementById("symbolHotspotLayer").innerHTML = "";
