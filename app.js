@@ -470,11 +470,62 @@ modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop)
 const symbolDetailBackdrop = document.getElementById("symbolDetailBackdrop");
 function openSymbolDetail(card, index) {
   const s = card.symbols[index];
+  currentSymbolDetailCard = card;
+  currentSymbolDetailIndex = index;
   document.getElementById("symbolDetailEyebrow").textContent = card.name_jp + " のシンボル";
   document.getElementById("symbolDetailTitle").textContent = s.title;
-  document.getElementById("symbolDetailText").textContent = s.text;
+  document.getElementById("symbolDetailText").textContent = getSymbolText(card, index);
+  document.getElementById("symbolEditArea").classList.remove("show");
+  document.getElementById("symbolEditSaved").classList.remove("show");
+  document.getElementById("symbolDetailText").style.display = "block";
   symbolDetailBackdrop.classList.remove("hidden");
 }
+let currentSymbolDetailCard = null;
+let currentSymbolDetailIndex = -1;
+let symbolNotes = {};
+function symbolNoteKey(card, index) {
+  return card.id + ":" + index;
+}
+function getSymbolText(card, index) {
+  const key = symbolNoteKey(card, index);
+  return (symbolNotes[key] !== undefined) ? symbolNotes[key] : card.symbols[index].text;
+}
+fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
+  symbolNotes = data || {};
+}).catch(() => {});
+
+document.getElementById("symbolEditLink").addEventListener("click", () => {
+  if (!currentSymbolDetailCard) return;
+  document.getElementById("symbolEditTextarea").value = getSymbolText(currentSymbolDetailCard, currentSymbolDetailIndex);
+  document.getElementById("symbolDetailText").style.display = "none";
+  document.getElementById("symbolEditArea").classList.add("show");
+  document.getElementById("symbolEditSaved").classList.remove("show");
+});
+document.getElementById("symbolEditCancelBtn").addEventListener("click", () => {
+  document.getElementById("symbolEditArea").classList.remove("show");
+  document.getElementById("symbolDetailText").style.display = "block";
+});
+document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
+  if (!currentSymbolDetailCard) return;
+  const newText = document.getElementById("symbolEditTextarea").value.trim();
+  if (!newText) return;
+  const key = symbolNoteKey(currentSymbolDetailCard, currentSymbolDetailIndex);
+  fetch("/api/symbol-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key: key, text: newText })
+  }).then(r => r.json()).then(() => {
+    symbolNotes[key] = newText;
+    document.getElementById("symbolDetailText").textContent = newText;
+    document.getElementById("symbolEditArea").classList.remove("show");
+    document.getElementById("symbolDetailText").style.display = "block";
+    const savedEl = document.getElementById("symbolEditSaved");
+    savedEl.classList.add("show");
+    setTimeout(() => savedEl.classList.remove("show"), 2000);
+  }).catch(() => {
+    alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
+});
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
 symbolDetailBackdrop.addEventListener("click", (e) => { if (e.target === symbolDetailBackdrop) symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") symbolDetailBackdrop.classList.add("hidden"); });
