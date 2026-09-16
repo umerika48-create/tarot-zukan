@@ -88,6 +88,19 @@ def apply_notes_to_cards(cards, notes):
                 if note.get("text"):
                     symbols[idx]["text"] = note["text"]
                 applied += 1
+        elif "." in field:
+            parts = field.split(".")
+            target = card
+            ok = True
+            for p in parts[:-1]:
+                if isinstance(target, dict) and p in target:
+                    target = target[p]
+                else:
+                    ok = False
+                    break
+            if ok and note.get("text") and isinstance(target, dict):
+                target[parts[-1]] = note["text"]
+                applied += 1
         else:
             if note.get("text"):
                 card[field] = note["text"]
