@@ -1528,11 +1528,6 @@ function drawComboDecks() {
     const deckX = document.querySelector("#comboDeckXRow .chip.active").dataset.deck;
     const deckY = document.querySelector("#comboDeckYRow .chip.active").dataset.deck;
     const deckZ = document.querySelector("#comboDeckZRow .chip.active").dataset.deck;
-    if (new Set([deckX, deckY, deckZ]).size !== 3) {
-      alert("3つのデッキはそれぞれ別々のものを選んでください。");
-      stage.dataset.drawn = "";
-      return;
-    }
     decks = [deckX, deckY, deckZ];
   } else {
     const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
