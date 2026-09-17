@@ -254,6 +254,9 @@
   .symbol-edit-link:hover { opacity:.9; }
   .symbol-detail-delete-link { color:#e08a8a; opacity:.75; margin-left:10px; }
   .symbol-detail-delete-link:hover { opacity:1; }
+  .hidden-symbols-block { margin-top:10px; }
+  .hidden-symbols-block .symbol-chip-row { margin-top:8px; }
+  .symbol-chip.hidden-symbol-chip { opacity:.5; border-style:dashed; }
   .symbol-edit-area { display:none; margin-top:10px; }
   .symbol-edit-area.show { display:block; }
   .symbol-edit-area .symbol-edit-title-input {
@@ -970,6 +973,10 @@
             <button type="button" class="save" id="addSymbolSaveBtn">保存</button>
             <button type="button" id="addSymbolCancelBtn">キャンセル</button>
           </div>
+        </div>
+        <div class="hidden-symbols-block" id="hiddenSymbolsBlock" style="display:none;">
+          <span class="symbol-edit-link" id="hiddenSymbolsToggle"></span>
+          <div class="symbol-chip-row" id="hiddenSymbolsRow" style="display:none;"></div>
         </div>
       </div>
       <div class="story-popup" id="mConnPopup">

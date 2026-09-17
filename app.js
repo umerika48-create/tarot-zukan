@@ -235,6 +235,67 @@ document.querySelectorAll(".acc-sec-h").forEach(h => {
     h.closest(".acc-sec").classList.toggle("open");
   });
 });
+function renderSymbolsSection(c) {
+  const chipRow = document.getElementById("mSymbolChipRow");
+  chipRow.innerHTML = "";
+  const hotspotLayer = document.getElementById("symbolHotspotLayer");
+  hotspotLayer.innerHTML = "";
+  const hotspotLabel = document.createElement("div");
+  hotspotLabel.className = "symbol-hotspot-label";
+  hotspotLabel.id = "symbolHotspotLabel";
+  hotspotLayer.appendChild(hotspotLabel);
+
+  function hideHotspotLabel() {
+    hotspotLabel.classList.remove("show");
+    document.querySelectorAll(".symbol-hotspot.active").forEach(d => d.classList.remove("active"));
+  }
+
+  let hotspotNum = 0;
+  const hiddenBuiltinSymbols = [];
+  if (c.symbols && c.symbols.length) {
+    const hasCoords = c.symbols.some(s => typeof s.x === "number" && typeof s.y === "number");
+    document.getElementById("viewToggle").style.display = hasCoords ? "flex" : "none";
+    c.symbols.forEach((s, i) => {
+      if (isSymbolHidden(c, i)) {
+        hiddenBuiltinSymbols.push({ index: i, label: s.label });
+        return;
+      }
+      const chip = document.createElement("span");
+      chip.className = "symbol-chip";
+      chip.textContent = s.label;
+      chip.addEventListener("click", () => openSymbolDetail(c, i));
+      chipRow.appendChild(chip);
+
+      if (typeof s.x === "number" && typeof s.y === "number") {
+        hotspotNum++;
+        const dot = document.createElement("div");
+        dot.className = "symbol-hotspot";
+        dot.style.left = s.x + "%";
+        dot.style.top = s.y + "%";
+        dot.title = s.label;
+        dot.textContent = hotspotNum;
+        dot.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const alreadyActive = dot.classList.contains("active");
+          hideHotspotLabel();
+          if (alreadyActive) return;
+          dot.classList.add("active");
+          hotspotLabel.textContent = s.label;
+          hotspotLabel.style.left = s.x + "%";
+          hotspotLabel.style.top = Math.max(s.y - 6, 4) + "%";
+          hotspotLabel.classList.add("show");
+          hotspotLabel.onclick = (ev) => { ev.stopPropagation(); hideHotspotLabel(); openSymbolDetail(c, i); };
+        });
+        hotspotLayer.appendChild(dot);
+      }
+    });
+  } else {
+    document.getElementById("viewToggle").style.display = "none";
+  }
+  renderHiddenSymbolsLink(c, hiddenBuiltinSymbols);
+  renderAddedChips(c);
+  document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
+}
 function openModal(c) {
   currentModalIndex = currentGridList.findIndex(x => x.id === c.id);
   updateNavButtons();
@@ -342,60 +403,8 @@ function openModal(c) {
     document.getElementById("mStoryHeader").textContent = "ストーリー：" + c.name_jp;
     document.getElementById("mStoryText").textContent = getFieldOverride(c, "story");
   }
-  const chipRow = document.getElementById("mSymbolChipRow");
-  chipRow.innerHTML = "";
-  const hotspotLayer = document.getElementById("symbolHotspotLayer");
-  hotspotLayer.innerHTML = "";
-  const hotspotLabel = document.createElement("div");
-  hotspotLabel.className = "symbol-hotspot-label";
-  hotspotLabel.id = "symbolHotspotLabel";
-  hotspotLayer.appendChild(hotspotLabel);
-
-  function hideHotspotLabel() {
-    hotspotLabel.classList.remove("show");
-    document.querySelectorAll(".symbol-hotspot.active").forEach(d => d.classList.remove("active"));
-  }
-
-  let hotspotNum = 0;
-  if (c.symbols && c.symbols.length) {
-    const hasCoords = c.symbols.some(s => typeof s.x === "number" && typeof s.y === "number");
-    document.getElementById("viewToggle").style.display = hasCoords ? "flex" : "none";
-    c.symbols.forEach((s, i) => {
-      const chip = document.createElement("span");
-      chip.className = "symbol-chip";
-      chip.textContent = s.label;
-      chip.addEventListener("click", () => openSymbolDetail(c, i));
-      chipRow.appendChild(chip);
-
-      if (typeof s.x === "number" && typeof s.y === "number") {
-        hotspotNum++;
-        const dot = document.createElement("div");
-        dot.className = "symbol-hotspot";
-        dot.style.left = s.x + "%";
-        dot.style.top = s.y + "%";
-        dot.title = s.label;
-        dot.textContent = hotspotNum;
-        dot.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const alreadyActive = dot.classList.contains("active");
-          hideHotspotLabel();
-          if (alreadyActive) return;
-          dot.classList.add("active");
-          hotspotLabel.textContent = s.label;
-          hotspotLabel.style.left = s.x + "%";
-          hotspotLabel.style.top = Math.max(s.y - 6, 4) + "%";
-          hotspotLabel.classList.add("show");
-          hotspotLabel.onclick = (ev) => { ev.stopPropagation(); hideHotspotLabel(); openSymbolDetail(c, i); };
-        });
-        hotspotLayer.appendChild(dot);
-      }
-    });
-  } else {
-    document.getElementById("viewToggle").style.display = "none";
-  }
-  renderAddedChips(c);
+  renderSymbolsSection(c);
   document.getElementById("addSymbolArea").classList.remove("show");
-  document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
   if (c.current_situation) {
     document.getElementById("mSituationHeader").textContent = "現状に出たら：" + c.name_jp;
     document.getElementById("mSituationText").textContent = getFieldOverride(c, "current_situation");
@@ -506,7 +515,9 @@ function openSymbolDetail(card, index) {
   document.getElementById("symbolDetailText").style.display = "block";
   document.getElementById("symbolDetailTitle").style.display = "block";
   document.getElementById("symbolDeleteBtn").style.display = "none";
-  document.getElementById("symbolDetailDeleteLink").style.display = "none";
+  const deleteLink = document.getElementById("symbolDetailDeleteLink");
+  deleteLink.textContent = isSymbolHidden(card, index) ? "再表示にする" : "非表示にする";
+  deleteLink.style.display = "inline-block";
   symbolDetailBackdrop.classList.remove("hidden");
 }
 let currentSymbolDetailCard = null;
@@ -514,6 +525,38 @@ let currentSymbolDetailIndex = -1;
 let symbolNotes = {};
 function symbolNoteKey(card, index) {
   return card.id + ":" + index;
+}
+function isSymbolHidden(card, index) {
+  const note = symbolNotes[symbolNoteKey(card, index)];
+  return !!(note && note.hidden);
+}
+function renderHiddenSymbolsLink(card, hiddenList) {
+  const block = document.getElementById("hiddenSymbolsBlock");
+  const toggle = document.getElementById("hiddenSymbolsToggle");
+  const row = document.getElementById("hiddenSymbolsRow");
+  row.innerHTML = "";
+  row.style.display = "none";
+  if (!hiddenList.length) {
+    block.style.display = "none";
+    return;
+  }
+  block.style.display = "block";
+  toggle.textContent = "非表示にしたシンボル（" + hiddenList.length + "）";
+  toggle.onclick = () => {
+    if (row.style.display === "none") {
+      row.style.display = "flex";
+      row.innerHTML = "";
+      hiddenList.forEach(h => {
+        const chip = document.createElement("span");
+        chip.className = "symbol-chip hidden-symbol-chip";
+        chip.textContent = h.label;
+        chip.addEventListener("click", () => openSymbolDetail(card, h.index));
+        row.appendChild(chip);
+      });
+    } else {
+      row.style.display = "none";
+    }
+  };
 }
 function getCardFieldText(card, field) {
   const key = card.id + ":" + field;
@@ -628,7 +671,9 @@ function openAddedSymbolDetail(card, s) {
   document.getElementById("symbolDetailText").style.display = "block";
   document.getElementById("symbolDetailTitle").style.display = "block";
   document.getElementById("symbolDeleteBtn").style.display = "inline-block";
-  document.getElementById("symbolDetailDeleteLink").style.display = "inline-block";
+  const deleteLink = document.getElementById("symbolDetailDeleteLink");
+  deleteLink.textContent = "削除";
+  deleteLink.style.display = "inline-block";
   symbolDetailBackdrop.classList.remove("hidden");
 }
 
@@ -784,7 +829,29 @@ document.getElementById("symbolDeleteBtn").addEventListener("click", () => {
   });
 });
 document.getElementById("symbolDetailDeleteLink").addEventListener("click", () => {
-  document.getElementById("symbolDeleteBtn").click();
+  if (currentAddedSymbolId) {
+    document.getElementById("symbolDeleteBtn").click();
+    return;
+  }
+  if (!currentSymbolDetailCard || currentSymbolDetailIndex === null) return;
+  const card = currentSymbolDetailCard;
+  const index = currentSymbolDetailIndex;
+  const key = symbolNoteKey(card, index);
+  const newHidden = !isSymbolHidden(card, index);
+  if (newHidden && !confirm("このシンボルを図鑑から非表示にしますか？（あとで「非表示にしたシンボル」から再表示できます）")) return;
+  fetch("/api/symbol-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key: key, hidden: newHidden })
+  }).then(r => r.json()).then(() => {
+    const existing = symbolNotes[key] || {};
+    existing.hidden = newHidden;
+    symbolNotes[key] = existing;
+    symbolDetailBackdrop.classList.add("hidden");
+    renderSymbolsSection(card);
+  }).catch(() => {
+    alert("処理に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
 });
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
 symbolDetailBackdrop.addEventListener("click", (e) => { if (e.target === symbolDetailBackdrop) symbolDetailBackdrop.classList.add("hidden"); });
