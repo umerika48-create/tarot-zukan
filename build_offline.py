@@ -83,6 +83,10 @@ def apply_notes_to_cards(cards, notes):
             idx = int(field)
             symbols = card.get("symbols") or []
             if 0 <= idx < len(symbols):
+                if note.get("hidden"):
+                    symbols[idx] = None
+                    applied += 1
+                    continue
                 if note.get("title"):
                     symbols[idx]["title"] = note["title"]
                 if note.get("text"):
@@ -105,6 +109,11 @@ def apply_notes_to_cards(cards, notes):
             if note.get("text"):
                 card[field] = note["text"]
                 applied += 1
+    # 非表示にされたシンボル（Noneでマーク）を配列から取り除く（座標・番号はオフライン版内で再計算される）
+    for card in cards:
+        symbols = card.get("symbols")
+        if symbols:
+            card["symbols"] = [s for s in symbols if s is not None]
     return applied
 
 def process_data_js(filename, varname, notes):
