@@ -506,6 +506,7 @@ function openSymbolDetail(card, index) {
   document.getElementById("symbolDetailText").style.display = "block";
   document.getElementById("symbolDetailTitle").style.display = "block";
   document.getElementById("symbolDeleteBtn").style.display = "none";
+  document.getElementById("symbolDetailDeleteLink").style.display = "none";
   symbolDetailBackdrop.classList.remove("hidden");
 }
 let currentSymbolDetailCard = null;
@@ -627,6 +628,7 @@ function openAddedSymbolDetail(card, s) {
   document.getElementById("symbolDetailText").style.display = "block";
   document.getElementById("symbolDetailTitle").style.display = "block";
   document.getElementById("symbolDeleteBtn").style.display = "inline-block";
+  document.getElementById("symbolDetailDeleteLink").style.display = "inline-block";
   symbolDetailBackdrop.classList.remove("hidden");
 }
 
@@ -780,6 +782,9 @@ document.getElementById("symbolDeleteBtn").addEventListener("click", () => {
   }).catch(() => {
     alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
   });
+});
+document.getElementById("symbolDetailDeleteLink").addEventListener("click", () => {
+  document.getElementById("symbolDeleteBtn").click();
 });
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
 symbolDetailBackdrop.addEventListener("click", (e) => { if (e.target === symbolDetailBackdrop) symbolDetailBackdrop.classList.add("hidden"); });
