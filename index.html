@@ -230,6 +230,8 @@
   }
   .story-popup.show { display:block; animation: fadein .3s ease; }
   .story-popup .sp-h { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#e39a95; margin-bottom:6px; }
+  .story-popup .person-q { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#e39a95; margin:14px 0 4px; }
+  .story-popup .person-q:first-of-type { margin-top:0; }
   .story-popup p { margin:0; font-size:14px; line-height:1.7; color:var(--text); }
 
   .symbol-chip-row { display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
@@ -922,11 +924,21 @@
       </div>
       <div class="tag-row" id="mTagRow" style="display:none;">
         <span class="age-badge" id="mAge"></span>
+        <span class="story-tag" id="mPersonTag">【人物】</span>
         <span class="story-tag" id="mSituationTag">【現状】</span>
         <span class="story-tag" id="mPlaceTag">【場所】</span>
         <span class="story-tag" id="mStoryTag">【Story】</span>
         <span class="story-tag" id="mConnTag">【Context】</span>
         <span class="story-tag" id="mMnemonicTag">【覚え方】</span>
+      </div>
+      <div class="story-popup" id="mPersonPopup">
+        <div class="sp-h" id="mPersonHeader">人物</div>
+        <p class="person-q">① この人は何をしようとしている？</p>
+        <p id="mPersonIntent"></p>
+        <p class="person-q">② 実際に何をしている？</p>
+        <p id="mPersonAction"></p>
+        <p class="person-q">③ 一言</p>
+        <p id="mPersonQuote"></p>
       </div>
       <div class="story-popup" id="mSituationPopup">
         <div class="sp-h" id="mSituationHeader">現状</div>
