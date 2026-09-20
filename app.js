@@ -1549,9 +1549,6 @@ function setupComboDeckRow(rowId, groupRowIds) {
     chip.addEventListener("click", () => {
       document.querySelectorAll(`#${rowId} .chip`).forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
-      const picked = groupRowIds.map(id => document.querySelector(`#${id} .chip.active`).dataset.deck);
-      const hasDupe = new Set(picked).size !== picked.length;
-      if (hasDupe) return; // wait for the user to pick all-different decks before refreshing
       renderComboDeckStage();
     });
   });
@@ -1619,11 +1616,6 @@ function drawComboDecks() {
   } else {
     const deckA = document.querySelector("#comboDeckARow .chip.active").dataset.deck;
     const deckB = document.querySelector("#comboDeckBRow .chip.active").dataset.deck;
-    if (deckA === deckB) {
-      alert("2つのデッキは別々のものを選んでください。");
-      stage.dataset.drawn = "";
-      return;
-    }
     decks = [deckA, deckB];
   }
 
