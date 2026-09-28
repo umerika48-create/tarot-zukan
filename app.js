@@ -680,7 +680,10 @@ let addedSymbols = {};
 let currentAddedSymbolId = null;
 fetch("/api/added-symbols").then(r => r.ok ? r.json() : {}).then(data => {
   addedSymbols = data || {};
-}).catch(() => {});
+}).catch(() => {
+  // オフライン版：ビルド時に焼き込まれたスナップショットを使う
+  if (window.OFFLINE_ADDED_SYMBOLS) addedSymbols = window.OFFLINE_ADDED_SYMBOLS;
+});
 
 function renderAddedChips(card) {
   const chipRow = document.getElementById("mSymbolChipRow");
@@ -901,7 +904,10 @@ let currentMemoEditId = null;
 
 fetch("/api/memos").then(r => r.ok ? r.json() : {}).then(data => {
   cardMemos = data || {};
-}).catch(() => {});
+}).catch(() => {
+  // オフライン版：ビルド時に焼き込まれたスナップショットを使う
+  if (window.OFFLINE_MEMOS) cardMemos = window.OFFLINE_MEMOS;
+});
 
 function renderMemoList() {
   const list = cardMemos[currentMemoCardId] || [];

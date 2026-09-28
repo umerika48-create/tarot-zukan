@@ -4,6 +4,7 @@
 - index.html の <script src> をすべてインライン化
 - 各 cards.js 内の img パスを base64 データURIに置換
 - Google Fonts の <link> を @font-face（base64埋め込み）に置換
+- added-symbols-snapshot.json（/api/added-symbols）、memos-snapshot.json（/api/memos）があれば、追加ラベル・MEMOもオフライン版に焼き込む
 - symbol-notes-snapshot.json があれば、KV(/api/symbol-notes)の編集内容を各カードデータにマージしてから焼き込む
 出力: index_offline.html
 
@@ -68,6 +69,24 @@ def load_symbol_notes():
         notes = json.load(f)
     print(f"symbol-notes-snapshot.json を読み込みました（{len(notes)}件の編集）")
     return notes
+
+def load_json_snapshot(filename, label):
+    path = os.path.join(ROOT, filename)
+    if not os.path.exists(path):
+        print(f"{filename} が無いため、{label}は取り込まずビルドします。")
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    print(f"{filename} を読み込みました（{label}：{len(data)}カード分）")
+    return data
+
+def offline_data_script(added_symbols, memos):
+    parts = []
+    if added_symbols is not None:
+        parts.append("window.OFFLINE_ADDED_SYMBOLS = " + json.dumps(added_symbols, ensure_ascii=False) + ";")
+    if memos is not None:
+        parts.append("window.OFFLINE_MEMOS = " + json.dumps(memos, ensure_ascii=False) + ";")
+    return "\n".join(parts).replace("</", "<\\/")
 
 def apply_notes_to_cards(cards, notes):
     applied = 0
@@ -167,6 +186,9 @@ def build_font_face_css():
 def main():
     html = read("index.html")
     notes = load_symbol_notes()
+    added_symbols = load_json_snapshot("added-symbols-snapshot.json", "追加ラベル")
+    memos = load_json_snapshot("memos-snapshot.json", "MEMO")
+    offline_script = offline_data_script(added_symbols, memos)
 
     # 1) Google Fonts link を @font-face に置換
     font_css = build_font_face_css()
@@ -188,6 +210,8 @@ def main():
     # 3) それ以外の script src はそのままインライン化
     for jsf in NON_DATA_JS_FILES:
         js_text = read(jsf)
+        if jsf == "app.js" and offline_script:
+            js_text = offline_script + "\n" + js_text
         tag = f'<script src="{jsf}"></script>'
         html = html.replace(tag, f"<script>\n{js_text}\n</script>")
 
