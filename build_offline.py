@@ -144,6 +144,16 @@ def apply_notes_to_cards(cards, notes):
             if ok and note.get("text") and isinstance(target, dict):
                 target[parts[-1]] = note["text"]
                 applied += 1
+        elif field == "keywords":
+            # キーワードはKV上ではJSON文字列で保存されているため、配列に戻して反映する
+            if note.get("text"):
+                try:
+                    parsed = json.loads(note["text"])
+                except ValueError:
+                    parsed = None
+                if isinstance(parsed, list) and parsed:
+                    card["keywords"] = parsed
+                    applied += 1
         else:
             if note.get("text"):
                 card[field] = note["text"]
