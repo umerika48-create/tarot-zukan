@@ -12,11 +12,11 @@ export async function onRequestGet(context) {
     const raw = await env.TAROT_KV.get("added-symbols");
     const data = raw ? JSON.parse(raw) : {};
     return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   } catch (err) {
     return new Response(JSON.stringify({}), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   }
 }
@@ -35,7 +35,7 @@ export async function onRequestPost(context) {
     if (!cardId) {
       return new Response(JSON.stringify({ ok: false, error: "cardId is required" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json; charset=utf-8" }
       });
     }
 
@@ -49,7 +49,7 @@ export async function onRequestPost(context) {
       if (!label || !title || !text) {
         return new Response(JSON.stringify({ ok: false, error: "label, title and text are required" }), {
           status: 400,
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "application/json; charset=utf-8" }
         });
       }
       if (id) {
@@ -69,12 +69,12 @@ export async function onRequestPost(context) {
 
     await env.TAROT_KV.put("added-symbols", JSON.stringify(data));
     return new Response(JSON.stringify({ ok: true, symbols: data[cardId] }), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {
       status: 500,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   }
 }

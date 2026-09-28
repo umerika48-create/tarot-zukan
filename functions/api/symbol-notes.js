@@ -10,11 +10,11 @@ export async function onRequestGet(context) {
     const raw = await env.TAROT_KV.get("symbol-notes");
     const data = raw ? JSON.parse(raw) : {};
     return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   } catch (err) {
     return new Response(JSON.stringify({}), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   }
 }
@@ -31,7 +31,7 @@ export async function onRequestPost(context) {
     if (!key || (!text && !hasHidden)) {
       return new Response(JSON.stringify({ ok: false, error: "key and text are required" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json; charset=utf-8" }
       });
     }
     const raw = await env.TAROT_KV.get("symbol-notes");
@@ -47,12 +47,12 @@ export async function onRequestPost(context) {
     data[key] = existing;
     await env.TAROT_KV.put("symbol-notes", JSON.stringify(data));
     return new Response(JSON.stringify({ ok: true }), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {
       status: 500,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json; charset=utf-8" }
     });
   }
 }
