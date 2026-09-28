@@ -310,6 +310,7 @@ function openModal(c) {
   document.getElementById("viewTogglePlain").classList.add("active");
   document.getElementById("viewToggleSymbol").classList.remove("active");
   resetAccordions();
+  resetTapEdits();
 
   if (c.deck === "lenormand" || c.deck === "rune" || c.deck === "heart_oracle" || c.deck === "step_oracle" || c.deck === "answer_oracle") {
     document.getElementById("mEyebrow").textContent =
@@ -324,11 +325,11 @@ function openModal(c) {
     document.getElementById("mSituationPopup").classList.remove("show");
     document.getElementById("mPlacePopup").classList.remove("show");
     document.getElementById("mUpLabel").textContent = "意味";
-    document.getElementById("mUp").textContent = c.meaning;
+    document.getElementById("mUp").textContent = getFieldOverride(c, "meaning");
     document.getElementById("mRvSec").style.display = "none";
     document.getElementById("mLoveSec").style.display = "block";
     document.getElementById("mLoveLabel").textContent = c.deck === "step_oracle" ? "後押しのひとこと" : c.deck === "heart_oracle" ? "今のアプローチ" : c.deck === "answer_oracle" ? "見極めのひとこと" : "恋愛での視点";
-    document.getElementById("mLove").textContent = c.love;
+    document.getElementById("mLove").textContent = getFieldOverride(c, "love");
     document.getElementById("mWorkSec").style.display = "none";
     modalBackdrop.classList.remove("hidden");
     return;
@@ -339,11 +340,11 @@ function openModal(c) {
   document.getElementById("mLoveSec").style.display = "block";
   document.getElementById("mLoveLabel").textContent = "恋愛での視点";
   document.getElementById("mEyebrow").textContent = SUIT_LABEL[c.arcana] + " " + SUIT_JA_SHORT[c.arcana] + (c.deck === "marseille" ? "（マルセイユ版）" : "");
-  document.getElementById("mUp").textContent = c.upright;
-  document.getElementById("mRv").textContent = c.reversed;
-  document.getElementById("mLove").textContent = c.love;
+  document.getElementById("mUp").textContent = getFieldOverride(c, "upright");
+  document.getElementById("mRv").textContent = getFieldOverride(c, "reversed");
+  document.getElementById("mLove").textContent = getFieldOverride(c, "love");
   document.getElementById("mWorkSec").style.display = c.work ? "block" : "none";
-  document.getElementById("mWork").textContent = c.work || "";
+  document.getElementById("mWork").textContent = getFieldOverride(c, "work");
 
   const storyPopup = document.getElementById("mStoryPopup");
   const personPopup = document.getElementById("mPersonPopup");
@@ -400,13 +401,13 @@ function openModal(c) {
     contrastEl.style.display = contrastText ? "block" : "none";
   }
   if (c.mnemonic) {
-    document.getElementById("mMnemonicText").textContent = c.mnemonic;
+    document.getElementById("mMnemonicText").textContent = getFieldOverride(c, "mnemonic");
   }
 
   if (c.person) {
-    document.getElementById("mPersonIntent").textContent = c.person.intent || "";
-    document.getElementById("mPersonAction").textContent = c.person.action || "";
-    document.getElementById("mPersonQuote").textContent = c.person.quote || "";
+    document.getElementById("mPersonIntent").textContent = getFieldOverride(c, "person.intent");
+    document.getElementById("mPersonAction").textContent = getFieldOverride(c, "person.action");
+    document.getElementById("mPersonQuote").textContent = getFieldOverride(c, "person.quote");
   }
   if (c.story) {
     document.getElementById("mStoryHeader").textContent = "ストーリー：" + c.name_jp;
@@ -601,24 +602,28 @@ function getFieldOverride(card, path) {
   for (const p of parts) { val = val ? val[p] : undefined; }
   return val || "";
 }
+const TAP_EDIT_PAIRS = [];
 function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
+  // path は文字列、またはカードを受け取ってパスを返す関数
+  const pathOf = (card) => (typeof path === "function" ? path(card) : path);
+  TAP_EDIT_PAIRS.push([pId, areaId]);
   document.getElementById(pId).addEventListener("click", () => {
     const card = currentGridList[currentModalIndex];
     if (!card) return;
-    document.getElementById(taId).value = getFieldOverride(card, path);
+    document.getElementById(taId).value = getFieldOverride(card, pathOf(card));
     document.getElementById(pId).style.display = "none";
     document.getElementById(areaId).classList.add("show");
   });
   document.getElementById(cancelId).addEventListener("click", () => {
     document.getElementById(areaId).classList.remove("show");
-    document.getElementById(pId).style.display = "block";
+    document.getElementById(pId).style.display = "";
   });
   document.getElementById(saveId).addEventListener("click", () => {
     const card = currentGridList[currentModalIndex];
     if (!card) return;
     const newText = document.getElementById(taId).value.trim();
     if (!newText) return;
-    const key = card.id + ":" + path;
+    const key = card.id + ":" + pathOf(card);
     fetch("/api/symbol-notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -627,7 +632,7 @@ function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
       symbolNotes[key] = { text: newText };
       document.getElementById(pId).textContent = newText;
       document.getElementById(areaId).classList.remove("show");
-      document.getElementById(pId).style.display = "block";
+      document.getElementById(pId).style.display = "";
       const savedEl = document.getElementById(savedId);
       savedEl.classList.add("show");
       setTimeout(() => savedEl.classList.remove("show"), 2000);
@@ -636,11 +641,26 @@ function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
     });
   });
 }
+function resetTapEdits() {
+  TAP_EDIT_PAIRS.forEach(([pId, areaId]) => {
+    document.getElementById(areaId).classList.remove("show");
+    document.getElementById(pId).style.display = "";
+  });
+}
+const SIMPLE_DECKS = ["lenormand", "rune", "heart_oracle", "step_oracle", "answer_oracle"];
 setupTapEdit("mSituationText", "situationEditArea", "situationEditTextarea", "situationEditSaveBtn", "situationEditCancelBtn", "situationEditSaved", "current_situation");
 setupTapEdit("mPlaceText", "placeEditArea", "placeEditTextarea", "placeEditSaveBtn", "placeEditCancelBtn", "placeEditSaved", "place");
 setupTapEdit("mStoryText", "storyEditArea", "storyEditTextarea", "storyEditSaveBtn", "storyEditCancelBtn", "storyEditSaved", "story");
 setupTapEdit("mConnPrev", "connPrevEditArea", "connPrevEditTextarea", "connPrevEditSaveBtn", "connPrevEditCancelBtn", "connPrevEditSaved", "connections.prev");
 setupTapEdit("mConnNext", "connNextEditArea", "connNextEditTextarea", "connNextEditSaveBtn", "connNextEditCancelBtn", "connNextEditSaved", "connections.next");
+setupTapEdit("mPersonIntent", "personIntentEditArea", "personIntentEditTextarea", "personIntentEditSaveBtn", "personIntentEditCancelBtn", "personIntentEditSaved", "person.intent");
+setupTapEdit("mPersonAction", "personActionEditArea", "personActionEditTextarea", "personActionEditSaveBtn", "personActionEditCancelBtn", "personActionEditSaved", "person.action");
+setupTapEdit("mPersonQuote", "personQuoteEditArea", "personQuoteEditTextarea", "personQuoteEditSaveBtn", "personQuoteEditCancelBtn", "personQuoteEditSaved", "person.quote");
+setupTapEdit("mUp", "upEditArea", "upEditTextarea", "upEditSaveBtn", "upEditCancelBtn", "upEditSaved", c => SIMPLE_DECKS.includes(c.deck) ? "meaning" : "upright");
+setupTapEdit("mRv", "rvEditArea", "rvEditTextarea", "rvEditSaveBtn", "rvEditCancelBtn", "rvEditSaved", "reversed");
+setupTapEdit("mLove", "loveEditArea", "loveEditTextarea", "loveEditSaveBtn", "loveEditCancelBtn", "loveEditSaved", "love");
+setupTapEdit("mWork", "workEditArea", "workEditTextarea", "workEditSaveBtn", "workEditCancelBtn", "workEditSaved", "work");
+setupTapEdit("mMnemonicText", "mnemonicEditArea", "mnemonicEditTextarea", "mnemonicEditSaveBtn", "mnemonicEditCancelBtn", "mnemonicEditSaved", "mnemonic");
 setupTapEdit("mConnContrast", "connContrastEditArea", "connContrastEditTextarea", "connContrastEditSaveBtn", "connContrastEditCancelBtn", "connContrastEditSaved", "connections.contrast");
 function getSymbolTitle(card, index) {
   const key = symbolNoteKey(card, index);
