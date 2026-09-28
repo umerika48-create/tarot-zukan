@@ -4,6 +4,7 @@
 - index.html の <script src> をすべてインライン化
 - 各 cards.js 内の img パスを base64 データURIに置換
 - Google Fonts の <link> を @font-face（base64埋め込み）に置換
+- tarot-backup.json（アプリの「バックアップを書き出す」で作る1ファイル）があれば、3種のKV編集をまとめて取り込む
 - added-symbols-snapshot.json（/api/added-symbols）、memos-snapshot.json（/api/memos）があれば、追加ラベル・MEMOもオフライン版に焼き込む
 - symbol-notes-snapshot.json があれば、KV(/api/symbol-notes)の編集内容を各カードデータにマージしてから焼き込む
 出力: index_offline.html
@@ -60,7 +61,22 @@ def inline_images_in_js(js_text):
         return f'"img": "{uri}"'
     return IMG_PATH_RE.sub(repl, js_text)
 
+def load_backup():
+    """tarot-backup.json（アプリの「バックアップを書き出す」で作られる1ファイル）があれば読む"""
+    path = os.path.join(ROOT, "tarot-backup.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    print("tarot-backup.json を読み込みました")
+    return data
+
+BACKUP = load_backup()
+
 def load_symbol_notes():
+    if BACKUP is not None and isinstance(BACKUP.get("symbolNotes"), dict):
+        print(f"tarot-backup.json のsymbolNotesを使用（{len(BACKUP['symbolNotes'])}件の編集）")
+        return BACKUP["symbolNotes"]
     path = os.path.join(ROOT, "symbol-notes-snapshot.json")
     if not os.path.exists(path):
         print("symbol-notes-snapshot.json が無いため、KVの編集内容は取り込まずビルドします。")
@@ -71,6 +87,10 @@ def load_symbol_notes():
     return notes
 
 def load_json_snapshot(filename, label):
+    key = {"added-symbols-snapshot.json": "addedSymbols", "memos-snapshot.json": "memos"}.get(filename)
+    if BACKUP is not None and key and isinstance(BACKUP.get(key), dict):
+        print(f"tarot-backup.json の{label}を使用（{len(BACKUP[key])}カード分）")
+        return BACKUP[key]
     path = os.path.join(ROOT, filename)
     if not os.path.exists(path):
         print(f"{filename} が無いため、{label}は取り込まずビルドします。")

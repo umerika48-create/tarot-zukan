@@ -1795,3 +1795,35 @@ document.getElementById("courseMemoBox").addEventListener("input", (e) => {
 
 // ---------- init ----------
 renderGrid();
+
+
+// ---- バックアップ書き出し：3つのKVデータを1つのJSONファイルにまとめてダウンロード ----
+(function setupBackupExport() {
+  const link = document.getElementById("backupExportLink");
+  if (!link) return;
+  if (location.protocol === "file:") {
+    document.getElementById("backupExportWrap").style.display = "none";
+    return;
+  }
+  link.addEventListener("click", () => {
+    const get = (url) => fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.json(); });
+    link.textContent = "書き出し中…";
+    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos")])
+      .then(([symbolNotes, addedSymbols, memos]) => {
+        const backup = { symbolNotes, addedSymbols, memos, exportedAt: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "tarot-backup.json";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        link.textContent = "書き出しました（tarot-backup.json）";
+        setTimeout(() => { link.textContent = "バックアップを書き出す（オフライン版の更新用）"; }, 4000);
+      })
+      .catch(() => {
+        link.textContent = "バックアップを書き出す（オフライン版の更新用）";
+        alert("書き出しに失敗しました。通信状態を確認してもう一度お試しください。");
+      });
+  });
+})();
