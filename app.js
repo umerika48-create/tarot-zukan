@@ -236,6 +236,7 @@ document.querySelectorAll(".acc-sec-h").forEach(h => {
   });
 });
 function renderSymbolsSection(c) {
+  document.getElementById("symbolDetailBackdrop").classList.add("hidden");
   const chipRow = document.getElementById("mSymbolChipRow");
   chipRow.innerHTML = "";
   const hotspotLayer = document.getElementById("symbolHotspotLayer");
@@ -892,7 +893,6 @@ document.getElementById("symbolDetailDeleteLink").addEventListener("click", () =
   });
 });
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
-symbolDetailBackdrop.addEventListener("click", (e) => { if (e.target === symbolDetailBackdrop) symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackdrop.classList.add("hidden"); });
 

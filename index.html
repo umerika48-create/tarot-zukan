@@ -242,13 +242,12 @@
   .symbol-chip:hover { background: rgba(181,97,90,.15); }
 
   .symbol-detail-backdrop {
-    position:fixed; inset:0; background: rgba(10,9,14,.72); backdrop-filter: blur(2px);
-    display:flex; align-items:center; justify-content:center; padding:20px; z-index:60;
+    display:block; margin-top:14px; animation: fadein .2s ease;
   }
   .symbol-detail-backdrop.hidden { display:none; }
   .symbol-detail-modal {
-    background: var(--surface); border:1px solid var(--rose-dim); border-radius:16px;
-    max-width: 460px; width:100%; max-height:80vh; overflow-y:auto; padding: 26px 28px; position:relative;
+    background: var(--surface-2); border:1px solid var(--rose-dim); border-radius:16px;
+    max-height: 60vh; overflow-y:auto; padding: 20px 22px; position:relative;
   }
   .symbol-detail-title { font-family:'Kosugi Maru',sans-serif; font-size:20px; color:var(--text); margin-bottom:12px; }
   .symbol-detail-modal p { margin:0; font-size:14.5px; line-height:1.75; color:var(--text); }
@@ -1004,6 +1003,26 @@
           <div class="symbol-edit-saved" id="storyEditSaved">保存しました</div>
         </div>
         <div class="symbol-chip-row" id="mSymbolChipRow"></div>
+        <div class="symbol-detail-backdrop hidden" id="symbolDetailBackdrop">
+          <div class="symbol-detail-modal">
+            <button class="modal-close" id="symbolDetailClose">&times;</button>
+            <div class="sp-h" id="symbolDetailEyebrow">シンボルの意味</div>
+            <div class="symbol-detail-title" id="symbolDetailTitle"></div>
+            <p id="symbolDetailText"></p>
+            <span class="symbol-edit-link" id="symbolEditLink">編集</span>
+            <span class="symbol-edit-link symbol-detail-delete-link" id="symbolDetailDeleteLink" style="display:none;">削除</span>
+            <div class="symbol-edit-area" id="symbolEditArea">
+              <input type="text" id="symbolEditTitleInput" class="symbol-edit-title-input">
+              <textarea id="symbolEditTextarea"></textarea>
+              <div class="symbol-edit-btns">
+                <button type="button" class="save" id="symbolEditSaveBtn">保存</button>
+                <button type="button" id="symbolEditCancelBtn">キャンセル</button>
+                <button type="button" class="delete" id="symbolDeleteBtn" style="display:none;">削除</button>
+              </div>
+              <div class="symbol-edit-saved" id="symbolEditSaved">保存しました</div>
+            </div>
+          </div>
+        </div>
         <span class="symbol-edit-link" id="addSymbolLink">＋ ラベルを追加</span>
         <div class="symbol-edit-area" id="addSymbolArea">
           <input type="text" id="addSymbolLabelInput" class="symbol-edit-title-input" placeholder="ラベル（例：白いバラ）">
@@ -1135,26 +1154,6 @@
   <img id="imageZoomImg" src="" alt="">
 </div>
 
-<div class="symbol-detail-backdrop hidden" id="symbolDetailBackdrop">
-  <div class="symbol-detail-modal">
-    <button class="modal-close" id="symbolDetailClose">&times;</button>
-    <div class="sp-h" id="symbolDetailEyebrow">シンボルの意味</div>
-    <div class="symbol-detail-title" id="symbolDetailTitle"></div>
-    <p id="symbolDetailText"></p>
-    <span class="symbol-edit-link" id="symbolEditLink">編集</span>
-    <span class="symbol-edit-link symbol-detail-delete-link" id="symbolDetailDeleteLink" style="display:none;">削除</span>
-    <div class="symbol-edit-area" id="symbolEditArea">
-      <input type="text" id="symbolEditTitleInput" class="symbol-edit-title-input">
-      <textarea id="symbolEditTextarea"></textarea>
-      <div class="symbol-edit-btns">
-        <button type="button" class="save" id="symbolEditSaveBtn">保存</button>
-        <button type="button" id="symbolEditCancelBtn">キャンセル</button>
-        <button type="button" class="delete" id="symbolDeleteBtn" style="display:none;">削除</button>
-      </div>
-      <div class="symbol-edit-saved" id="symbolEditSaved">保存しました</div>
-    </div>
-  </div>
-</div>
 
 <div class="memo-backdrop hidden" id="memoBackdrop">
   <div class="memo-modal">
