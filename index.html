@@ -208,7 +208,7 @@
     font-family:'Kosugi Maru',sans-serif; font-style:italic; font-size:15px; color:#e8cd8f; line-height:1.5;
   }
   .catch-edit-link { display:block; margin-top:4px; font-style:normal; }
-  .catch-quote-tap { cursor:pointer; }
+  .catch-quote-tap { cursor:pointer; white-space:pre-wrap; }
   .tag-row {
     display:flex; flex-wrap:wrap; gap:16px; margin-bottom:18px; row-gap:10px;
   }
@@ -232,7 +232,7 @@
   .story-popup .sp-h { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#e39a95; margin-bottom:6px; }
   .story-popup .person-q { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em; color:#e39a95; margin:14px 0 4px; }
   .story-popup .person-q:first-of-type { margin-top:0; }
-  .story-popup p { margin:0; font-size:14px; line-height:1.7; color:var(--text); }
+  .story-popup p { margin:0; font-size:14px; line-height:1.7; color:var(--text); white-space:pre-wrap; }
 
   .symbol-chip-row { display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
   .symbol-chip {
@@ -250,7 +250,7 @@
     max-height: 60vh; overflow-y:auto; padding: 20px 22px; position:relative;
   }
   .symbol-detail-title { font-family:'Kosugi Maru',sans-serif; font-size:20px; color:var(--text); margin-bottom:12px; }
-  .symbol-detail-modal p { margin:0; font-size:14.5px; line-height:1.75; color:var(--text); }
+  .symbol-detail-modal p { margin:0; font-size:14.5px; line-height:1.75; color:var(--text); white-space:pre-wrap; }
   .symbol-edit-link { display:inline-block; margin-top:10px; font-size:11px; color:var(--text-dim); opacity:.55; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
   .symbol-edit-link:hover { opacity:.9; }
   .symbol-detail-delete-link { color:#e08a8a; opacity:.75; margin-left:10px; }
@@ -366,7 +366,7 @@
   .acc-sec-h.lv { color: var(--rose); }
   .acc-sec-h .sec-chevron { font-size:12px; transition: transform .2s ease; opacity:.7; }
   .acc-sec.open .acc-sec-h .sec-chevron { transform: rotate(90deg); }
-  .acc-sec p { margin:0 0 14px; font-size:14.5px; line-height:1.75; color: var(--text); display:none; padding:0 2px; }
+  .acc-sec p { margin:0 0 14px; font-size:14.5px; line-height:1.75; color: var(--text); display:none; padding:0 2px; white-space:pre-wrap; }
   .acc-sec.open p { display:block; }
 
   /* DRAW VIEW */
