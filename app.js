@@ -520,6 +520,11 @@ modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop)
 // ---------- シンボル詳細ポップアップ ----------
 const symbolDetailBackdrop = document.getElementById("symbolDetailBackdrop");
 function openSymbolDetail(card, index) {
+  if (!symbolDetailBackdrop.classList.contains("hidden") && currentAddedSymbolId === null &&
+      currentSymbolDetailCard === card && currentSymbolDetailIndex === index) {
+    symbolDetailBackdrop.classList.add("hidden");
+    return;
+  }
   const s = card.symbols[index];
   currentSymbolDetailCard = card;
   currentSymbolDetailIndex = index;
@@ -699,6 +704,11 @@ function renderAddedChips(card) {
 }
 
 function openAddedSymbolDetail(card, s) {
+  if (!symbolDetailBackdrop.classList.contains("hidden") &&
+      currentAddedSymbolId === s.id && currentSymbolDetailCard === card) {
+    symbolDetailBackdrop.classList.add("hidden");
+    return;
+  }
   currentSymbolDetailCard = card;
   currentSymbolDetailIndex = null;
   currentAddedSymbolId = s.id;
