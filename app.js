@@ -1837,3 +1837,199 @@ renderGrid();
       });
   });
 })();
+
+// ---------- 記録：メモ（フォルダ管理） ----------
+const MEMO_FOLDERS_KEY = "tarot_memo_folders_v1";
+const MEMO_NOTES_KEY = "tarot_memo_notes_v1";
+
+function loadMemoFolders() {
+  try { return JSON.parse(localStorage.getItem(MEMO_FOLDERS_KEY)) || []; } catch (e) { return []; }
+}
+function saveMemoFolders(folders) {
+  localStorage.setItem(MEMO_FOLDERS_KEY, JSON.stringify(folders));
+}
+function loadMemoNotes() {
+  try { return JSON.parse(localStorage.getItem(MEMO_NOTES_KEY)) || []; } catch (e) { return []; }
+}
+function saveMemoNotes(notes) {
+  localStorage.setItem(MEMO_NOTES_KEY, JSON.stringify(notes));
+}
+function genMemoId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+let currentMemoFolderId = null;
+let currentMemoNoteId = null;
+
+// --- タブ切り替え ---
+document.getElementById("journalTabDraws").addEventListener("click", () => {
+  document.getElementById("journalTabDraws").classList.add("active");
+  document.getElementById("journalTabMemos").classList.remove("active");
+  document.getElementById("journalDrawsPane").style.display = "";
+  document.getElementById("journalMemosPane").style.display = "none";
+});
+document.getElementById("journalTabMemos").addEventListener("click", () => {
+  document.getElementById("journalTabMemos").classList.add("active");
+  document.getElementById("journalTabDraws").classList.remove("active");
+  document.getElementById("journalDrawsPane").style.display = "none";
+  document.getElementById("journalMemosPane").style.display = "";
+  showMemoFolderListScreen();
+});
+
+function showMemoScreen(name) {
+  document.getElementById("memoFolderListScreen").style.display = name === "folders" ? "" : "none";
+  document.getElementById("memoNoteListScreen").style.display = name === "notes" ? "" : "none";
+  document.getElementById("memoNoteEditScreen").style.display = name === "edit" ? "" : "none";
+}
+
+// --- フォルダ一覧 ---
+function showMemoFolderListScreen() {
+  currentMemoFolderId = null;
+  showMemoScreen("folders");
+  renderMemoFolderList();
+}
+function renderMemoFolderList() {
+  const folders = loadMemoFolders();
+  const notes = loadMemoNotes();
+  const itemsEl = document.getElementById("memoFolderListItems");
+  itemsEl.innerHTML = "";
+  document.getElementById("memoFolderEmpty").style.display = folders.length ? "none" : "block";
+  folders.forEach(f => {
+    const count = notes.filter(n => n.folderId === f.id).length;
+    const row = document.createElement("div");
+    row.className = "memo-folder-item";
+    row.innerHTML = `
+      <span class="memo-folder-name"></span>
+      <span class="memo-folder-count">${count}件</span>
+      <button type="button" class="memo-note-item-del" title="フォルダを削除">&times;</button>
+    `;
+    row.querySelector(".memo-folder-name").textContent = f.name;
+    row.querySelector(".memo-note-item-del").addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteMemoFolder(f.id, f.name, count);
+    });
+    row.addEventListener("click", () => openMemoFolder(f.id));
+    itemsEl.appendChild(row);
+  });
+}
+document.getElementById("memoFolderAddLink").addEventListener("click", () => {
+  const name = (prompt("フォルダ名を入力してください（空欄のままでも作成できます）") || "").trim();
+  const folders = loadMemoFolders();
+  folders.push({ id: genMemoId(), name: name || "無題フォルダ" });
+  saveMemoFolders(folders);
+  renderMemoFolderList();
+});
+function deleteMemoFolder(folderId, folderName, noteCount) {
+  const msg = noteCount > 0
+    ? `「${folderName}」を削除しますか？中の${noteCount}件のメモも一緒に削除されます。`
+    : `「${folderName}」を削除しますか？`;
+  if (!confirm(msg)) return;
+  saveMemoFolders(loadMemoFolders().filter(f => f.id !== folderId));
+  saveMemoNotes(loadMemoNotes().filter(n => n.folderId !== folderId));
+  renderMemoFolderList();
+}
+
+// --- フォルダ内のメモ一覧 ---
+function openMemoFolder(folderId) {
+  currentMemoFolderId = folderId;
+  showMemoScreen("notes");
+  renderMemoNoteList();
+}
+function renderMemoNoteList() {
+  const folder = loadMemoFolders().find(f => f.id === currentMemoFolderId);
+  document.getElementById("memoNoteListFolderName").textContent = folder ? folder.name : "";
+  const notes = loadMemoNotes().filter(n => n.folderId === currentMemoFolderId)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const itemsEl = document.getElementById("memoNoteListItems");
+  itemsEl.innerHTML = "";
+  document.getElementById("memoNoteListEmpty").style.display = notes.length ? "none" : "block";
+  notes.forEach(n => {
+    const row = document.createElement("div");
+    row.className = "memo-note-item";
+    row.innerHTML = `
+      <div class="memo-note-item-body">
+        <div class="memo-note-item-title"></div>
+        <div class="memo-note-item-subtitle"></div>
+      </div>
+      <button type="button" class="memo-note-item-del" title="削除">&times;</button>
+    `;
+    row.querySelector(".memo-note-item-title").textContent = n.title || "無題";
+    row.querySelector(".memo-note-item-subtitle").textContent = n.subtitle || "";
+    row.querySelector(".memo-note-item-del").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!confirm("このメモを削除しますか？")) return;
+      saveMemoNotes(loadMemoNotes().filter(x => x.id !== n.id));
+      renderMemoNoteList();
+    });
+    row.addEventListener("click", () => openMemoNoteEdit(n.id));
+    itemsEl.appendChild(row);
+  });
+}
+document.getElementById("memoNoteListBackLink").addEventListener("click", showMemoFolderListScreen);
+document.getElementById("memoNoteAddLink").addEventListener("click", () => openMemoNoteEdit(null));
+
+// --- メモ編集 ---
+function populateMemoFolderSelect(selectedFolderId) {
+  const sel = document.getElementById("memoNoteFolderSelect");
+  sel.innerHTML = "";
+  loadMemoFolders().forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f.id;
+    opt.textContent = f.name;
+    if (f.id === selectedFolderId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+function openMemoNoteEdit(noteId) {
+  currentMemoNoteId = noteId;
+  const note = noteId ? loadMemoNotes().find(n => n.id === noteId) : null;
+  document.getElementById("memoNoteTitleInput").value = note ? note.title : "";
+  document.getElementById("memoNoteSubtitleInput").value = note ? note.subtitle : "";
+  document.getElementById("memoNoteTextInput").value = note ? note.text : "";
+  populateMemoFolderSelect(note ? note.folderId : currentMemoFolderId);
+  document.getElementById("memoNoteDeleteBtn").style.display = note ? "inline-block" : "none";
+  document.getElementById("memoNoteSaved").classList.remove("show");
+  showMemoScreen("edit");
+}
+document.getElementById("memoNoteEditBackLink").addEventListener("click", () => {
+  showMemoScreen("notes");
+});
+document.getElementById("memoNoteCancelBtn").addEventListener("click", () => {
+  showMemoScreen("notes");
+});
+document.getElementById("memoNoteSaveBtn").addEventListener("click", () => {
+  const title = document.getElementById("memoNoteTitleInput").value.trim();
+  const subtitle = document.getElementById("memoNoteSubtitleInput").value.trim();
+  const text = document.getElementById("memoNoteTextInput").value;
+  const folderId = document.getElementById("memoNoteFolderSelect").value;
+  const notes = loadMemoNotes();
+  if (currentMemoNoteId) {
+    const note = notes.find(n => n.id === currentMemoNoteId);
+    if (note) {
+      note.title = title;
+      note.subtitle = subtitle;
+      note.text = text;
+      note.folderId = folderId;
+      note.updatedAt = Date.now();
+    }
+  } else {
+    currentMemoNoteId = genMemoId();
+    notes.push({ id: currentMemoNoteId, folderId, title, subtitle, text, updatedAt: Date.now() });
+  }
+  saveMemoNotes(notes);
+  currentMemoFolderId = folderId;
+  const savedEl = document.getElementById("memoNoteSaved");
+  savedEl.classList.add("show");
+  setTimeout(() => {
+    savedEl.classList.remove("show");
+    showMemoScreen("notes");
+    renderMemoNoteList();
+  }, 500);
+});
+document.getElementById("memoNoteDeleteBtn").addEventListener("click", () => {
+  if (!currentMemoNoteId) return;
+  if (!confirm("このメモを削除しますか？")) return;
+  saveMemoNotes(loadMemoNotes().filter(n => n.id !== currentMemoNoteId));
+  showMemoScreen("notes");
+  renderMemoNoteList();
+});
