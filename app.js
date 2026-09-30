@@ -1900,10 +1900,17 @@ function renderMemoFolderList() {
     row.className = "memo-folder-item";
     row.innerHTML = `
       <span class="memo-folder-name"></span>
-      <span class="memo-folder-count">${count}件</span>
-      <button type="button" class="memo-note-item-del" title="フォルダを削除">&times;</button>
+      <div class="memo-folder-item-actions">
+        <span class="memo-folder-count">${count}件</span>
+        <button type="button" class="memo-folder-rename-btn" title="フォルダ名を変更">&#9998;</button>
+        <button type="button" class="memo-note-item-del" title="フォルダを削除">&times;</button>
+      </div>
     `;
     row.querySelector(".memo-folder-name").textContent = f.name;
+    row.querySelector(".memo-folder-rename-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      renameMemoFolder(f.id, f.name);
+    });
     row.querySelector(".memo-note-item-del").addEventListener("click", (e) => {
       e.stopPropagation();
       deleteMemoFolder(f.id, f.name, count);
@@ -1928,6 +1935,17 @@ function deleteMemoFolder(folderId, folderName, noteCount) {
   saveMemoNotes(loadMemoNotes().filter(n => n.folderId !== folderId));
   renderMemoFolderList();
 }
+function renameMemoFolder(folderId, currentName) {
+  const input = prompt("フォルダ名を入力してください（空欄のままでも保存できます）", currentName);
+  if (input === null) return;
+  const name = input.trim();
+  const folders = loadMemoFolders();
+  const folder = folders.find(f => f.id === folderId);
+  if (!folder) return;
+  folder.name = name || "無題フォルダ";
+  saveMemoFolders(folders);
+  renderMemoFolderList();
+}
 
 // --- フォルダ内のメモ一覧 ---
 function openMemoFolder(folderId) {
@@ -1950,11 +1968,13 @@ function renderMemoNoteList() {
       <div class="memo-note-item-body">
         <div class="memo-note-item-title"></div>
         <div class="memo-note-item-subtitle"></div>
+        <div class="memo-note-item-preview"></div>
       </div>
       <button type="button" class="memo-note-item-del" title="削除">&times;</button>
     `;
     row.querySelector(".memo-note-item-title").textContent = n.title || "無題";
     row.querySelector(".memo-note-item-subtitle").textContent = n.subtitle || "";
+    row.querySelector(".memo-note-item-preview").textContent = n.text || "";
     row.querySelector(".memo-note-item-del").addEventListener("click", (e) => {
       e.stopPropagation();
       if (!confirm("このメモを削除しますか？")) return;
