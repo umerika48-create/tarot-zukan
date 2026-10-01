@@ -1,7 +1,8 @@
 // カード詳細のシンボル説明・キャッチフレーズなどを、アプリの編集画面から書き換えられるようにするためのAPI。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "symbol-notes" のJSONオブジェクトとして
-// { "m01:0": {"title":"編集後のタイトル","text":"編集後の本文","hidden":true}, "m01:catchphrase": {"text":"..."} } の形でまとめて保存する。
-// title はシンボル説明の編集時のみ送られてくる（キャッチフレーズなど単一項目の編集では省略される）。
+// { "m01:0": {"label":"編集後のラベル","title":"編集後のタイトル","text":"編集後の本文","hidden":true}, "m01:catchphrase": {"text":"..."} } の形でまとめて保存する。
+// title・label はシンボル説明の編集時のみ送られてくる（キャッチフレーズなど単一項目の編集では省略される）。
+// label はStory欄に並ぶチップ（短いラベル）の文言、title/textはその詳細ポップアップの見出し・本文。
 // hidden は組み込みシンボル（cards.js由来）を図鑑上で非表示にする/再表示するためのフラグ（true/false）。
 
 export async function onRequestGet(context) {
@@ -24,6 +25,7 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json();
     const key = (body && body.key || "").toString();
+    const label = (body && body.label || "").toString();
     const title = (body && body.title || "").toString();
     const text = (body && body.text || "").toString();
     const hasHidden = !!(body && Object.prototype.hasOwnProperty.call(body, "hidden"));
@@ -40,6 +42,7 @@ export async function onRequestPost(context) {
     if (text) {
       existing.text = text;
       if (title) existing.title = title;
+      if (label) existing.label = label;
     }
     if (hasHidden) {
       existing.hidden = hidden;

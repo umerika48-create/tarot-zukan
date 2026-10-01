@@ -235,8 +235,8 @@ document.querySelectorAll(".acc-sec-h").forEach(h => {
     h.closest(".acc-sec").classList.toggle("open");
   });
 });
-function renderSymbolsSection(c) {
-  document.getElementById("symbolDetailBackdrop").classList.add("hidden");
+function renderSymbolsSection(c, keepDetailOpen) {
+  if (!keepDetailOpen) document.getElementById("symbolDetailBackdrop").classList.add("hidden");
   const chipRow = document.getElementById("mSymbolChipRow");
   chipRow.innerHTML = "";
   const hotspotLayer = document.getElementById("symbolHotspotLayer");
@@ -258,12 +258,12 @@ function renderSymbolsSection(c) {
     document.getElementById("viewToggle").style.display = hasCoords ? "flex" : "none";
     c.symbols.forEach((s, i) => {
       if (isSymbolHidden(c, i)) {
-        hiddenBuiltinSymbols.push({ index: i, label: s.label });
+        hiddenBuiltinSymbols.push({ index: i, label: getSymbolLabel(c, i) });
         return;
       }
       const chip = document.createElement("span");
       chip.className = "symbol-chip";
-      chip.textContent = s.label;
+      chip.textContent = getSymbolLabel(c, i);
       chip.addEventListener("click", () => openSymbolDetail(c, i));
       chipRow.appendChild(chip);
 
@@ -273,7 +273,7 @@ function renderSymbolsSection(c) {
         dot.className = "symbol-hotspot";
         dot.style.left = s.x + "%";
         dot.style.top = s.y + "%";
-        dot.title = s.label;
+        dot.title = getSymbolLabel(c, i);
         dot.textContent = hotspotNum;
         dot.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -281,7 +281,7 @@ function renderSymbolsSection(c) {
           hideHotspotLabel();
           if (alreadyActive) return;
           dot.classList.add("active");
-          hotspotLabel.textContent = s.label;
+          hotspotLabel.textContent = getSymbolLabel(c, i);
           hotspotLabel.style.left = s.x + "%";
           hotspotLabel.style.top = Math.max(s.y - 6, 4) + "%";
           hotspotLabel.classList.add("show");
@@ -668,6 +668,11 @@ setupTapEdit("mLove", "loveEditArea", "loveEditTextarea", "loveEditSaveBtn", "lo
 setupTapEdit("mWork", "workEditArea", "workEditTextarea", "workEditSaveBtn", "workEditCancelBtn", "workEditSaved", "work");
 setupTapEdit("mMnemonicText", "mnemonicEditArea", "mnemonicEditTextarea", "mnemonicEditSaveBtn", "mnemonicEditCancelBtn", "mnemonicEditSaved", "mnemonic");
 setupTapEdit("mConnContrast", "connContrastEditArea", "connContrastEditTextarea", "connContrastEditSaveBtn", "connContrastEditCancelBtn", "connContrastEditSaved", "connections.contrast");
+function getSymbolLabel(card, index) {
+  const key = symbolNoteKey(card, index);
+  const note = symbolNotes[key];
+  return (note && note.label) ? note.label : card.symbols[index].label;
+}
 function getSymbolTitle(card, index) {
   const key = symbolNoteKey(card, index);
   const note = symbolNotes[key];
@@ -797,9 +802,11 @@ document.getElementById("symbolEditLink").addEventListener("click", () => {
   if (currentAddedSymbolId) {
     const s = (addedSymbols[currentSymbolDetailCard.id] || []).find(x => x.id === currentAddedSymbolId);
     if (!s) return;
+    document.getElementById("symbolEditLabelInput").value = s.label;
     document.getElementById("symbolEditTitleInput").value = s.title;
     document.getElementById("symbolEditTextarea").value = s.text;
   } else {
+    document.getElementById("symbolEditLabelInput").value = getSymbolLabel(currentSymbolDetailCard, currentSymbolDetailIndex);
     document.getElementById("symbolEditTitleInput").value = getSymbolTitle(currentSymbolDetailCard, currentSymbolDetailIndex);
     document.getElementById("symbolEditTextarea").value = getSymbolText(currentSymbolDetailCard, currentSymbolDetailIndex);
   }
@@ -815,17 +822,16 @@ document.getElementById("symbolEditCancelBtn").addEventListener("click", () => {
 });
 document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
   if (!currentSymbolDetailCard) return;
+  const newLabel = document.getElementById("symbolEditLabelInput").value.trim();
   const newTitle = document.getElementById("symbolEditTitleInput").value.trim();
   const newText = document.getElementById("symbolEditTextarea").value.trim();
-  if (!newTitle || !newText) return;
+  if (!newLabel || !newTitle || !newText) return;
   const card = currentSymbolDetailCard;
   if (currentAddedSymbolId) {
-    const s = (addedSymbols[card.id] || []).find(x => x.id === currentAddedSymbolId);
-    const label = s ? s.label : newTitle;
     fetch("/api/added-symbols", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cardId: card.id, id: currentAddedSymbolId, label: label, title: newTitle, text: newText })
+      body: JSON.stringify({ cardId: card.id, id: currentAddedSymbolId, label: newLabel, title: newTitle, text: newText })
     }).then(r => r.json()).then(data => {
       if (data && data.symbols) addedSymbols[card.id] = data.symbols;
       document.getElementById("symbolDetailTitle").textContent = newTitle;
@@ -833,7 +839,7 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
       document.getElementById("symbolEditArea").classList.remove("show");
       document.getElementById("symbolDetailText").style.display = "block";
       document.getElementById("symbolDetailTitle").style.display = "block";
-      renderAddedChips(card);
+      renderSymbolsSection(card, true);
       const savedEl = document.getElementById("symbolEditSaved");
       savedEl.classList.add("show");
       setTimeout(() => savedEl.classList.remove("show"), 2000);
@@ -846,14 +852,19 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
   fetch("/api/symbol-notes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: key, title: newTitle, text: newText })
+    body: JSON.stringify({ key: key, label: newLabel, title: newTitle, text: newText })
   }).then(r => r.json()).then(() => {
-    symbolNotes[key] = { title: newTitle, text: newText };
+    const existing = symbolNotes[key] || {};
+    existing.label = newLabel;
+    existing.title = newTitle;
+    existing.text = newText;
+    symbolNotes[key] = existing;
     document.getElementById("symbolDetailTitle").textContent = newTitle;
     document.getElementById("symbolDetailText").textContent = newText;
     document.getElementById("symbolEditArea").classList.remove("show");
     document.getElementById("symbolDetailText").style.display = "block";
     document.getElementById("symbolDetailTitle").style.display = "block";
+    renderSymbolsSection(currentSymbolDetailCard, true);
     const savedEl = document.getElementById("symbolEditSaved");
     savedEl.classList.add("show");
     setTimeout(() => savedEl.classList.remove("show"), 2000);
