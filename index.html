@@ -223,6 +223,11 @@
   }
   .story-tag:hover { color: var(--gold); }
   .tap-edit-p { cursor:pointer; }
+  .diamond-item { padding:9px 2px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .diamond-item:last-child { border-bottom:none; }
+  .diamond-item-title { font-family:'Kosugi Maru',sans-serif; font-size:14.5px; color:var(--text); }
+  .diamond-item-text { font-size:13px; color:var(--text-secondary); margin-top:3px; white-space:pre-wrap; line-height:1.65; }
+  #mDiamondPopup .memo-add-btn { margin-top:10px; }
 
   .story-popup {
     margin-top: 4px; background: var(--surface-hover); border:1px solid var(--rose-dim);
@@ -1007,12 +1012,28 @@
       </div>
       <div class="tag-row" id="mTagRow" style="display:none;">
         <span class="age-badge" id="mAge"></span>
+        <span class="story-tag" id="mDiamondTag">【❖】</span>
         <span class="story-tag" id="mPersonTag">【人物】</span>
         <span class="story-tag" id="mStoryTag">【Story】</span>
         <span class="story-tag" id="mSituationTag">【現状】</span>
         <span class="story-tag" id="mPlaceTag">【場所】</span>
         <span class="story-tag" id="mConnTag">【Context】</span>
         <span class="story-tag" id="mMnemonicTag">【覚え方】</span>
+      </div>
+      <div class="story-popup" id="mDiamondPopup">
+        <div class="sp-h">❖</div>
+        <div id="diamondList"></div>
+        <div class="memo-list-empty" id="diamondEmpty" style="display:none;">まだメモがありません。</div>
+        <button type="button" class="memo-add-btn" id="diamondAddBtn">＋ 新しいメモを追加</button>
+        <div class="symbol-edit-area" id="diamondEditArea">
+          <input type="text" id="diamondTitleInput" class="symbol-edit-title-input" placeholder="タイトル">
+          <textarea id="diamondTextInput" placeholder="説明"></textarea>
+          <div class="symbol-edit-btns">
+            <button type="button" class="save" id="diamondSaveBtn">保存</button>
+            <button type="button" id="diamondCancelBtn">キャンセル</button>
+            <button type="button" class="delete" id="diamondDeleteBtn" style="display:none;">削除</button>
+          </div>
+        </div>
       </div>
       <div class="story-popup" id="mPersonPopup">
         <div class="sp-h" id="mPersonHeader">人物</div>

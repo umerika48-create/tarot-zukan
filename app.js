@@ -349,12 +349,14 @@ function openModal(c) {
 
   const storyPopup = document.getElementById("mStoryPopup");
   const personPopup = document.getElementById("mPersonPopup");
+  const diamondPopup = document.getElementById("mDiamondPopup");
   const situationPopup = document.getElementById("mSituationPopup");
   const placePopup = document.getElementById("mPlacePopup");
   const connPopup = document.getElementById("mConnPopup");
   const mnemonicPopup = document.getElementById("mMnemonicPopup");
   storyPopup.classList.remove("show");
   personPopup.classList.remove("show");
+  diamondPopup.classList.remove("show");
   situationPopup.classList.remove("show");
   placePopup.classList.remove("show");
   connPopup.classList.remove("show");
@@ -378,20 +380,19 @@ function openModal(c) {
   }
 
   const hasConn = c.connections && (c.connections.prev || c.connections.next || c.connections.contrast);
-  const hasAnyTag = c.age_range || c.story || c.person || c.current_situation || c.place || hasConn || c.mnemonic;
-  if (hasAnyTag) {
-    document.getElementById("mTagRow").style.display = "flex";
-    document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
-    document.getElementById("mAge").textContent = c.age_range || "";
-    document.getElementById("mPersonTag").style.display = c.person ? "inline-block" : "none";
-    document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
-    document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
-    document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
-    document.getElementById("mConnTag").style.display = hasConn ? "inline-block" : "none";
-    document.getElementById("mMnemonicTag").style.display = c.mnemonic ? "inline-block" : "none";
-  } else {
-    document.getElementById("mTagRow").style.display = "none";
-  }
+  // 【❖】はどのカードにも付くので、タグ行は常に表示する
+  document.getElementById("mTagRow").style.display = "flex";
+  document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
+  document.getElementById("mAge").textContent = c.age_range || "";
+  document.getElementById("mPersonTag").style.display = c.person ? "inline-block" : "none";
+  document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
+  document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
+  document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
+  document.getElementById("mConnTag").style.display = hasConn ? "inline-block" : "none";
+  document.getElementById("mMnemonicTag").style.display = c.mnemonic ? "inline-block" : "none";
+  diamondCardId = c.id;
+  closeDiamondEdit();
+  renderDiamondList();
 
   if (hasConn) {
     document.getElementById("mConnPrev").textContent = getFieldOverride(c, "connections.prev") || "";
@@ -430,6 +431,7 @@ function openModal(c) {
 function closeAllPopups() {
   document.getElementById("mStoryPopup").classList.remove("show");
   document.getElementById("mPersonPopup").classList.remove("show");
+  document.getElementById("mDiamondPopup").classList.remove("show");
   document.getElementById("mSituationPopup").classList.remove("show");
   document.getElementById("mPlacePopup").classList.remove("show");
   document.getElementById("mConnPopup").classList.remove("show");
@@ -439,6 +441,11 @@ document.getElementById("mStoryTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mStoryPopup").classList.contains("show");
   closeAllPopups();
   if (!isOpen) document.getElementById("mStoryPopup").classList.add("show");
+});
+document.getElementById("mDiamondTag").addEventListener("click", () => {
+  const isOpen = document.getElementById("mDiamondPopup").classList.contains("show");
+  closeAllPopups();
+  if (!isOpen) document.getElementById("mDiamondPopup").classList.add("show");
 });
 document.getElementById("mPersonTag").addEventListener("click", () => {
   const isOpen = document.getElementById("mPersonPopup").classList.contains("show");
@@ -916,6 +923,74 @@ document.getElementById("symbolDetailDeleteLink").addEventListener("click", () =
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackdrop.classList.add("hidden"); });
+
+// ---------- 【❖】ノート（タイトル＋説明。右下のMEMOとは別データ） ----------
+let diamondNotes = {};
+let diamondCardId = null;
+let diamondEditId = null;
+
+fetch("/api/diamond-notes").then(r => r.ok ? r.json() : {}).then(data => {
+  diamondNotes = data || {};
+  renderDiamondList();
+}).catch(() => {
+  // オフライン版：ビルド時に焼き込まれたスナップショットを使う
+  if (window.OFFLINE_DIAMOND_NOTES) { diamondNotes = window.OFFLINE_DIAMOND_NOTES; renderDiamondList(); }
+});
+
+function closeDiamondEdit() {
+  diamondEditId = null;
+  document.getElementById("diamondEditArea").classList.remove("show");
+  document.getElementById("diamondAddBtn").style.display = "";
+}
+function openDiamondEdit(note) {
+  diamondEditId = note ? note.id : null;
+  document.getElementById("diamondTitleInput").value = note ? note.title : "";
+  document.getElementById("diamondTextInput").value = note ? note.text : "";
+  document.getElementById("diamondDeleteBtn").style.display = note ? "inline-block" : "none";
+  document.getElementById("diamondEditArea").classList.add("show");
+  document.getElementById("diamondAddBtn").style.display = "none";
+  document.getElementById("diamondTitleInput").focus();
+}
+function renderDiamondList() {
+  const listEl = document.getElementById("diamondList");
+  if (!listEl || !diamondCardId) return;
+  const list = diamondNotes[diamondCardId] || [];
+  listEl.innerHTML = "";
+  document.getElementById("diamondEmpty").style.display = list.length ? "none" : "block";
+  list.forEach(n => {
+    const row = document.createElement("div");
+    row.className = "diamond-item";
+    row.innerHTML = '<div class="diamond-item-title"></div><div class="diamond-item-text"></div>';
+    row.querySelector(".diamond-item-title").textContent = n.title;
+    row.querySelector(".diamond-item-text").textContent = n.text || "";
+    row.addEventListener("click", () => openDiamondEdit(n));
+    listEl.appendChild(row);
+  });
+}
+function diamondPost(payload, failMsg) {
+  return fetch("/api/diamond-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ cardId: diamondCardId }, payload))
+  }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(data => {
+    if (data && data.notes) diamondNotes[diamondCardId] = data.notes;
+    closeDiamondEdit();
+    renderDiamondList();
+  }).catch(() => alert(failMsg));
+}
+document.getElementById("diamondAddBtn").addEventListener("click", () => openDiamondEdit(null));
+document.getElementById("diamondCancelBtn").addEventListener("click", closeDiamondEdit);
+document.getElementById("diamondSaveBtn").addEventListener("click", () => {
+  const title = document.getElementById("diamondTitleInput").value.trim();
+  const text = document.getElementById("diamondTextInput").value.trim();
+  if (!title) { document.getElementById("diamondTitleInput").focus(); return; }
+  diamondPost({ id: diamondEditId, title, text }, "保存に失敗しました。通信状態を確認してもう一度お試しください。");
+});
+document.getElementById("diamondDeleteBtn").addEventListener("click", () => {
+  if (!diamondEditId) return;
+  if (!confirm("このメモを削除しますか？")) return;
+  diamondPost({ id: diamondEditId, delete: true }, "削除に失敗しました。通信状態を確認してもう一度お試しください。");
+});
 
 // ---------- MEMO ----------
 const memoBackdrop = document.getElementById("memoBackdrop");
@@ -1829,9 +1904,9 @@ renderGrid();
   link.addEventListener("click", () => {
     const get = (url) => fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.json(); });
     link.textContent = "書き出し中…";
-    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos")])
-      .then(([symbolNotes, addedSymbols, memos]) => {
-        const backup = { symbolNotes, addedSymbols, memos, exportedAt: new Date().toISOString() };
+    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes")])
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes]) => {
+        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, exportedAt: new Date().toISOString() };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
