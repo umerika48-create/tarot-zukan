@@ -593,6 +593,54 @@
   .course-memo-wrap { border-top:1px solid var(--border); padding-top:16px; }
   .course-memo-status { font-size:11px; color:var(--text-dim); margin-top:6px; height:14px; }
 
+
+  .course-toolbar { max-width:640px; margin-bottom:14px; }
+  .course-new-btn {
+    width:100%; padding:11px; border-radius:12px; cursor:pointer; font-family:inherit;
+    background:none; color:var(--gold); border:1px dashed var(--gold-dim); font-size:14px; font-weight:700;
+  }
+  .course-new-btn:hover { background:var(--surface-hover); border-color:var(--gold); }
+  .course-edit-link { font-size:11px; color:var(--text-dim); text-decoration:underline; cursor:pointer; margin-left:10px; letter-spacing:0; }
+  .course-edit-link:hover { color:var(--gold); }
+  .course-edit-backdrop {
+    position:fixed; inset:0; background: rgba(10,9,14,.78); backdrop-filter: blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:16px; z-index:70;
+  }
+  .course-edit-backdrop.hidden { display:none; }
+  .course-edit-modal {
+    background: var(--surface); border:1px solid var(--gold-dim); border-radius:16px;
+    max-width:560px; width:100%; max-height:90vh; overflow-y:auto; padding:24px 22px; position:relative;
+  }
+  .course-edit-modal .sp-h { margin-bottom:14px; }
+  .ce-label { display:block; font-size:12px; color:var(--text-dim); margin:12px 0 5px; }
+  .ce-input, .ce-textarea {
+    width:100%; box-sizing:border-box; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-family:'Kosugi Maru',sans-serif; font-size:16px; padding:8px 10px;
+  }
+  .ce-textarea { font-family:inherit; font-size:14px; line-height:1.7; min-height:72px; resize:vertical; margin-top:6px; }
+  .ce-row { border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--surface-hover); }
+  .ce-row-top { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+  .ce-row .ce-time { width:132px; flex-shrink:0; font-family:'DM Mono',monospace; font-size:14px; color:var(--gold); }
+  .ce-row-btns { margin-left:auto; display:flex; gap:4px; flex-shrink:0; }
+  .ce-mini {
+    width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--text-dim); cursor:pointer; font-size:13px; font-family:inherit; padding:0;
+  }
+  .ce-mini:hover { color:var(--gold); border-color:var(--gold-dim); }
+  .ce-mini.del:hover { color:#e08a8a; border-color:#6b3a3a; }
+  .ce-labels { margin-top:8px; }
+  .ce-label-item { border-left:2px solid #e39a95; padding-left:10px; margin-top:8px; }
+  .ce-label-item .ce-label-head { display:flex; gap:8px; align-items:center; }
+  .ce-label-item .ce-input { font-size:14px; }
+  .ce-link-btn { background:none; border:none; color:var(--text-dim); font-size:12px; text-decoration:underline; cursor:pointer; padding:6px 0 0; font-family:inherit; }
+  .ce-link-btn:hover { color:var(--gold); }
+  .ce-add-btn {
+    width:100%; padding:10px; border-radius:10px; cursor:pointer; font-family:inherit; font-size:13px;
+    background:none; color:var(--gold); border:1px dashed var(--gold-dim);
+  }
+  .ce-add-btn:hover { background:var(--surface-hover); }
+  .ce-hint { font-size:11px; color:var(--text-dim); margin-top:4px; line-height:1.5; }
+
   .inline-glossary-label {
     color:#e39a95; text-decoration: underline dotted; text-underline-offset: 3px;
     cursor:pointer; font-weight:600;
@@ -919,6 +967,7 @@
 
     <!-- 講座 VIEW -->
     <div class="view hidden" id="view-courses">
+      <div class="course-toolbar" id="courseToolbar"><button type="button" class="course-new-btn" id="courseNewBtn">＋ 講座を新規登録</button></div>
       <div class="course-list" id="courseList"></div>
     </div>
 
@@ -1239,7 +1288,7 @@
 <div class="course-detail-backdrop hidden" id="courseDetailBackdrop">
   <div class="course-detail-modal">
     <button class="modal-close" id="courseDetailClose">&times;</button>
-    <div class="sp-h" id="courseDetailEyebrow">講座</div>
+    <div class="sp-h" id="courseDetailEyebrow">講座 <span class="course-edit-link" id="courseEditLink">編集</span></div>
     <div class="course-detail-title" id="courseDetailTitle"></div>
     <p id="courseDetailSubtitle" class="course-detail-subtitle"></p>
     <div class="course-program" id="courseProgram"></div>
@@ -1247,6 +1296,27 @@
       <div class="sec-h up">メモ</div>
       <textarea class="note-box" id="courseMemoBox" placeholder="気づいたこと、次回への改善点などを自由にメモできます"></textarea>
       <div class="course-memo-status" id="courseMemoStatus"></div>
+    </div>
+  </div>
+</div>
+
+<div class="course-edit-backdrop hidden" id="courseEditBackdrop">
+  <div class="course-edit-modal">
+    <button class="modal-close" id="courseEditClose">&times;</button>
+    <div class="sp-h" id="courseEditEyebrow">講座を新規登録</div>
+    <label class="ce-label" for="ceTitle">タイトル</label>
+    <input type="text" id="ceTitle" class="ce-input" placeholder="例：楽しく学ぶタロットカードカフェ会">
+    <label class="ce-label" for="ceSubtitle">サブタイトル（開催形式・時間など）</label>
+    <input type="text" id="ceSubtitle" class="ce-input" placeholder="例：eriCAFE会｜60分・定員8名｜19:00〜20:00">
+    <label class="ce-label" for="ceTags">タグ（「、」で区切る）</label>
+    <input type="text" id="ceTags" class="ce-input" placeholder="例：初心者向け、体験型、カフェ会">
+    <div class="ce-label">プログラム</div>
+    <div id="ceProgramRows"></div>
+    <button type="button" class="ce-add-btn" id="ceAddRowBtn">＋ プログラム行を追加</button>
+    <div class="memo-edit-btns" style="margin-top:18px;">
+      <button type="button" class="save" id="ceSaveBtn">保存</button>
+      <button type="button" id="ceCancelBtn">キャンセル</button>
+      <button type="button" class="delete" id="ceDeleteBtn" style="display:none;">削除</button>
     </div>
   </div>
 </div>

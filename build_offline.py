@@ -87,7 +87,7 @@ def load_symbol_notes():
     return notes
 
 def load_json_snapshot(filename, label):
-    key = {"added-symbols-snapshot.json": "addedSymbols", "memos-snapshot.json": "memos", "diamond-notes-snapshot.json": "diamondNotes"}.get(filename)
+    key = {"added-symbols-snapshot.json": "addedSymbols", "memos-snapshot.json": "memos", "diamond-notes-snapshot.json": "diamondNotes", "courses-snapshot.json": "courses"}.get(filename)
     if BACKUP is not None and key and isinstance(BACKUP.get(key), dict):
         print(f"tarot-backup.json の{label}を使用（{len(BACKUP[key])}カード分）")
         return BACKUP[key]
@@ -100,12 +100,14 @@ def load_json_snapshot(filename, label):
     print(f"{filename} を読み込みました（{label}：{len(data)}カード分）")
     return data
 
-def offline_data_script(added_symbols, memos, diamond_notes=None):
+def offline_data_script(added_symbols, memos, diamond_notes=None, courses=None):
     parts = []
     if added_symbols is not None:
         parts.append("window.OFFLINE_ADDED_SYMBOLS = " + json.dumps(added_symbols, ensure_ascii=False) + ";")
     if memos is not None:
         parts.append("window.OFFLINE_MEMOS = " + json.dumps(memos, ensure_ascii=False) + ";")
+    if courses is not None:
+        parts.append("window.OFFLINE_COURSES = " + json.dumps(courses, ensure_ascii=False) + ";")
     if diamond_notes is not None:
         parts.append("window.OFFLINE_DIAMOND_NOTES = " + json.dumps(diamond_notes, ensure_ascii=False) + ";")
     return "\n".join(parts).replace("</", "<\\/")
@@ -221,7 +223,8 @@ def main():
     added_symbols = load_json_snapshot("added-symbols-snapshot.json", "追加ラベル")
     memos = load_json_snapshot("memos-snapshot.json", "MEMO")
     diamond_notes = load_json_snapshot("diamond-notes-snapshot.json", "❖ノート")
-    offline_script = offline_data_script(added_symbols, memos, diamond_notes)
+    courses = load_json_snapshot("courses-snapshot.json", "講座")
+    offline_script = offline_data_script(added_symbols, memos, diamond_notes, courses)
 
     # 1) Google Fonts link を @font-face に置換
     font_css = build_font_face_css()

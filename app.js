@@ -1798,16 +1798,46 @@ function saveCourseMemo(courseId, text) {
   localStorage.setItem(COURSE_MEMO_KEY, JSON.stringify(memos));
 }
 
+function escHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+// 講座データ：courses.js の初期講座 ＋ KV(/api/courses)に保存した上書き・新規登録分
+let courseStore = { courses: {}, order: [] };
+const IS_OFFLINE_FILE = location.protocol === "file:";
+
+fetch("/api/courses").then(r => r.ok ? r.json() : null).then(data => {
+  if (data) courseStore = { courses: data.courses || {}, order: data.order || [] };
+  renderCourseList();
+}).catch(() => {
+  // オフライン版：ビルド時に焼き込まれたスナップショットを使う
+  if (window.OFFLINE_COURSES) {
+    courseStore = { courses: window.OFFLINE_COURSES.courses || {}, order: window.OFFLINE_COURSES.order || [] };
+    renderCourseList();
+  }
+});
+
+function isBuiltinCourse(id) { return COURSES.some(c => c.id === id); }
+function getAllCourses() {
+  const list = COURSES.map(c => courseStore.courses[c.id] || c);
+  courseStore.order.forEach(id => {
+    if (!isBuiltinCourse(id) && courseStore.courses[id]) list.push(courseStore.courses[id]);
+  });
+  return list;
+}
+function getCourseById(id) { return getAllCourses().find(c => c.id === id) || null; }
+
 function renderCourseList() {
   const list = document.getElementById("courseList");
+  document.getElementById("courseToolbar").style.display = IS_OFFLINE_FILE ? "none" : "";
   list.innerHTML = "";
-  COURSES.forEach(course => {
+  getAllCourses().forEach(course => {
     const card = document.createElement("div");
     card.className = "course-card";
     card.innerHTML = `
-      <div class="course-title">${course.title}</div>
-      <div class="course-sub">${course.subtitle}</div>
-      <div class="course-meta">${course.tags.map(t => `<span class="course-tag">${t}</span>`).join("")}</div>`;
+      <div class="course-title">${escHtml(course.title)}</div>
+      <div class="course-sub">${escHtml(course.subtitle)}</div>
+      <div class="course-meta">${(course.tags || []).map(t => `<span class="course-tag">${escHtml(t)}</span>`).join("")}</div>`;
     card.addEventListener("click", () => openCourseDetail(course));
     list.appendChild(card);
   });
@@ -1819,30 +1849,32 @@ const courseDetailBackdrop = document.getElementById("courseDetailBackdrop");
 function openCourseDetail(course) {
   currentCourseId = course.id;
   document.getElementById("courseDetailTitle").textContent = course.title;
-  document.getElementById("courseDetailSubtitle").textContent = course.subtitle;
+  document.getElementById("courseDetailSubtitle").textContent = course.subtitle || "";
+  document.getElementById("courseEditLink").style.display = IS_OFFLINE_FILE ? "none" : "";
 
   const program = document.getElementById("courseProgram");
   program.innerHTML = "";
-  course.program.forEach(item => {
+  (course.program || []).forEach(item => {
     const row = document.createElement("div");
     row.className = "course-program-item";
 
-    let descHtml = item.desc;
+    let descHtml = escHtml(item.desc);
     if (item.labels && item.labels.length) {
       item.labels.forEach((label, idx) => {
-        if (descHtml.includes(label.title)) {
+        const safeTitle = escHtml(label.title);
+        if (safeTitle && descHtml.includes(safeTitle)) {
           descHtml = descHtml.replace(
-            label.title,
-            `<span class="inline-glossary-label" data-label-idx="${idx}">${label.title}</span>`
+            safeTitle,
+            `<span class="inline-glossary-label" data-label-idx="${idx}">${safeTitle}</span>`
           );
         }
       });
     }
 
     row.innerHTML = `
-      <div class="course-program-time">${item.time}</div>
+      <div class="course-program-time">${escHtml(item.time)}</div>
       <div class="course-program-body">
-        <div class="cp-title">${item.title}</div>
+        <div class="cp-title">${escHtml(item.title)}</div>
         <div class="cp-desc">${descHtml}</div>
       </div>`;
 
@@ -1874,7 +1906,7 @@ courseGlossaryBackdrop.addEventListener("click", (e) => { if (e.target === cours
 
 document.getElementById("courseDetailClose").addEventListener("click", () => courseDetailBackdrop.classList.add("hidden"));
 courseDetailBackdrop.addEventListener("click", (e) => { if (e.target === courseDetailBackdrop) courseDetailBackdrop.classList.add("hidden"); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { courseDetailBackdrop.classList.add("hidden"); courseGlossaryBackdrop.classList.add("hidden"); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { courseEditBackdrop && courseEditBackdrop.classList.add("hidden"); courseDetailBackdrop.classList.add("hidden"); courseGlossaryBackdrop.classList.add("hidden"); } });
 
 let courseMemoTimer = null;
 document.getElementById("courseMemoBox").addEventListener("input", (e) => {
@@ -1887,6 +1919,158 @@ document.getElementById("courseMemoBox").addEventListener("input", (e) => {
     status.textContent = "保存しました";
     setTimeout(() => { status.textContent = ""; }, 1500);
   }, 500);
+});
+
+// ---- 講座の新規登録・編集 ----
+const courseEditBackdrop = document.getElementById("courseEditBackdrop");
+let courseEditId = null;
+let courseEditIsNew = false;
+
+function makeCourseId() {
+  return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function addLabelEditor(container, label) {
+  const item = document.createElement("div");
+  item.className = "ce-label-item";
+  item.innerHTML = `
+    <div class="ce-label-head">
+      <input type="text" class="ce-input ce-lab-title" placeholder="用語（説明文に含まれる言葉）">
+      <button type="button" class="ce-mini del" title="この用語ラベルを削除">&#10005;</button>
+    </div>
+    <textarea class="ce-textarea ce-lab-text" placeholder="タップしたときに開く解説"></textarea>`;
+  item.querySelector(".ce-lab-title").value = label ? label.title : "";
+  item.querySelector(".ce-lab-text").value = label ? label.text : "";
+  item.querySelector(".del").addEventListener("click", () => item.remove());
+  container.appendChild(item);
+}
+
+function addProgramRowEditor(item) {
+  const rows = document.getElementById("ceProgramRows");
+  const row = document.createElement("div");
+  row.className = "ce-row";
+  row.innerHTML = `
+    <div class="ce-row-top">
+      <input type="text" class="ce-input ce-time" placeholder="19:00〜19:05">
+      <div class="ce-row-btns">
+        <button type="button" class="ce-mini up" title="上へ">&uarr;</button>
+        <button type="button" class="ce-mini down" title="下へ">&darr;</button>
+        <button type="button" class="ce-mini del" title="この行を削除">&#10005;</button>
+      </div>
+    </div>
+    <input type="text" class="ce-input ce-ptitle" placeholder="見出し（例：オープニング・自己紹介）">
+    <textarea class="ce-textarea ce-desc" placeholder="説明"></textarea>
+    <div class="ce-labels"></div>
+    <button type="button" class="ce-link-btn ce-add-label">＋ 用語ラベルを追加</button>
+    <div class="ce-hint">用語ラベル：説明文にその言葉が含まれていると下線が付き、タップで解説が開きます。</div>`;
+  row.querySelector(".ce-time").value = item ? item.time : "";
+  row.querySelector(".ce-ptitle").value = item ? item.title : "";
+  row.querySelector(".ce-desc").value = item ? item.desc : "";
+  const labelBox = row.querySelector(".ce-labels");
+  ((item && item.labels) || []).forEach(l => addLabelEditor(labelBox, l));
+  row.querySelector(".ce-add-label").addEventListener("click", () => addLabelEditor(labelBox, null));
+  row.querySelector(".up").addEventListener("click", () => { if (row.previousElementSibling) rows.insertBefore(row, row.previousElementSibling); });
+  row.querySelector(".down").addEventListener("click", () => { if (row.nextElementSibling) rows.insertBefore(row.nextElementSibling, row); });
+  row.querySelector(".ce-row-btns .del").addEventListener("click", () => row.remove());
+  rows.appendChild(row);
+  return row;
+}
+
+function openCourseEdit(course) {
+  courseEditIsNew = !course;
+  courseEditId = course ? course.id : makeCourseId();
+  document.getElementById("courseEditEyebrow").textContent = course ? "講座を編集" : "講座を新規登録";
+  document.getElementById("ceTitle").value = course ? course.title : "";
+  document.getElementById("ceSubtitle").value = course ? (course.subtitle || "") : "";
+  document.getElementById("ceTags").value = course ? (course.tags || []).join("、") : "";
+  document.getElementById("ceProgramRows").innerHTML = "";
+  if (course && course.program && course.program.length) course.program.forEach(addProgramRowEditor);
+  else addProgramRowEditor(null);
+
+  const delBtn = document.getElementById("ceDeleteBtn");
+  if (!course) delBtn.style.display = "none";
+  else {
+    delBtn.style.display = "inline-block";
+    delBtn.textContent = isBuiltinCourse(course.id) ? "初期内容に戻す" : "削除";
+  }
+  courseEditBackdrop.classList.remove("hidden");
+  courseEditBackdrop.querySelector(".course-edit-modal").scrollTop = 0;
+}
+
+function closeCourseEdit() { courseEditBackdrop.classList.add("hidden"); }
+
+function collectCourseFromForm() {
+  const program = [];
+  document.querySelectorAll("#ceProgramRows .ce-row").forEach(row => {
+    const labels = [];
+    row.querySelectorAll(".ce-label-item").forEach(li => {
+      const title = li.querySelector(".ce-lab-title").value.trim();
+      if (title) labels.push({ title, text: li.querySelector(".ce-lab-text").value });
+    });
+    const item = {
+      time: row.querySelector(".ce-time").value.trim(),
+      title: row.querySelector(".ce-ptitle").value.trim(),
+      desc: row.querySelector(".ce-desc").value
+    };
+    if (labels.length) item.labels = labels;
+    if (item.time || item.title || item.desc) program.push(item);
+  });
+  return {
+    id: courseEditId,
+    title: document.getElementById("ceTitle").value.trim(),
+    subtitle: document.getElementById("ceSubtitle").value.trim(),
+    tags: document.getElementById("ceTags").value.split(/[、,，]/).map(t => t.trim()).filter(Boolean),
+    program
+  };
+}
+
+function coursePost(payload, failMsg) {
+  return fetch("/api/courses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(data => {
+    if (!data || !data.ok) throw new Error("save");
+    courseStore = { courses: data.courses || {}, order: data.order || [] };
+    return true;
+  }).catch(() => { alert(failMsg); return false; });
+}
+
+document.getElementById("courseNewBtn").addEventListener("click", () => openCourseEdit(null));
+document.getElementById("courseEditLink").addEventListener("click", () => {
+  const c = getCourseById(currentCourseId);
+  if (c) openCourseEdit(c);
+});
+document.getElementById("ceAddRowBtn").addEventListener("click", () => {
+  const row = addProgramRowEditor(null);
+  row.scrollIntoView({ block: "center", behavior: "smooth" });
+  row.querySelector(".ce-time").focus();
+});
+document.getElementById("courseEditClose").addEventListener("click", closeCourseEdit);
+document.getElementById("ceCancelBtn").addEventListener("click", closeCourseEdit);
+
+document.getElementById("ceSaveBtn").addEventListener("click", () => {
+  const course = collectCourseFromForm();
+  if (!course.title) { document.getElementById("ceTitle").focus(); alert("タイトルを入力してください。"); return; }
+  coursePost({ course, isNew: courseEditIsNew }, "保存に失敗しました。通信状態を確認してもう一度お試しください。").then(ok => {
+    if (!ok) return;
+    closeCourseEdit();
+    renderCourseList();
+    openCourseDetail(getCourseById(course.id) || course);
+  });
+});
+
+document.getElementById("ceDeleteBtn").addEventListener("click", () => {
+  const builtin = isBuiltinCourse(courseEditId);
+  const msg = builtin ? "この講座を初期の内容に戻しますか？（編集した内容は消えます）" : "この講座を削除しますか？";
+  if (!confirm(msg)) return;
+  coursePost({ id: courseEditId, delete: true }, "処理に失敗しました。通信状態を確認してもう一度お試しください。").then(ok => {
+    if (!ok) return;
+    closeCourseEdit();
+    renderCourseList();
+    const back = builtin ? getCourseById(courseEditId) : null;
+    if (back) openCourseDetail(back); else courseDetailBackdrop.classList.add("hidden");
+  });
 });
 
 // ---------- init ----------
@@ -1904,9 +2088,9 @@ renderGrid();
   link.addEventListener("click", () => {
     const get = (url) => fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.json(); });
     link.textContent = "書き出し中…";
-    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes")])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes]) => {
-        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, exportedAt: new Date().toISOString() };
+    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"), get("/api/courses")])
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses]) => {
+        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, courses, exportedAt: new Date().toISOString() };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
