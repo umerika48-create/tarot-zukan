@@ -228,6 +228,10 @@
   .diamond-item-title { font-family:'Kosugi Maru',sans-serif; font-size:14.5px; color:var(--text); }
   .diamond-item-text { font-size:13px; color:var(--text-secondary); margin-top:3px; white-space:pre-wrap; line-height:1.65; }
   #mDiamondPopup .memo-add-btn { margin-top:10px; }
+  .conn-empty { color:var(--text-dim); font-size:12.5px; opacity:.75; }
+  .ctx-free { margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+  .ctx-free-h { margin-bottom:6px; }
+  #mConnPopup .memo-add-btn { margin-top:10px; }
 
   .story-popup {
     margin-top: 4px; background: var(--surface-hover); border:1px solid var(--rose-dim);
@@ -1217,6 +1221,21 @@
             <button type="button" id="connContrastEditCancelBtn">キャンセル</button>
           </div>
           <div class="symbol-edit-saved" id="connContrastEditSaved">保存しました</div>
+        </div>
+        <div class="ctx-free">
+          <div class="sp-h ctx-free-h">自由項目</div>
+          <div id="ctxList"></div>
+          <div class="memo-list-empty" id="ctxEmpty" style="display:none;">まだ自由項目がありません。</div>
+          <button type="button" class="memo-add-btn" id="ctxAddBtn">＋ 自由項目を追加</button>
+          <div class="symbol-edit-area" id="ctxEditArea">
+            <input type="text" id="ctxTitleInput" class="symbol-edit-title-input" placeholder="タイトル">
+            <textarea id="ctxTextInput" placeholder="説明"></textarea>
+            <div class="symbol-edit-btns">
+              <button type="button" class="save" id="ctxSaveBtn">保存</button>
+              <button type="button" id="ctxCancelBtn">キャンセル</button>
+              <button type="button" class="delete" id="ctxDeleteBtn" style="display:none;">削除</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="story-popup" id="mMnemonicPopup">

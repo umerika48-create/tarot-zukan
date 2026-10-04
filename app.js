@@ -379,7 +379,6 @@ function openModal(c) {
     document.getElementById("mCatchWrap").style.display = "none";
   }
 
-  const hasConn = c.connections && (c.connections.prev || c.connections.next || c.connections.contrast);
   // 【❖】はどのカードにも付くので、タグ行は常に表示する
   document.getElementById("mTagRow").style.display = "flex";
   document.getElementById("mAge").style.display = c.age_range ? "inline-block" : "none";
@@ -388,20 +387,24 @@ function openModal(c) {
   document.getElementById("mStoryTag").style.display = c.story ? "inline-block" : "none";
   document.getElementById("mSituationTag").style.display = c.current_situation ? "inline-block" : "none";
   document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
-  document.getElementById("mConnTag").style.display = hasConn ? "inline-block" : "none";
+  document.getElementById("mConnTag").style.display = "inline-block"; // 【Context】は全カードで入力できる
   document.getElementById("mMnemonicTag").style.display = c.mnemonic ? "inline-block" : "none";
   diamondCardId = c.id;
   closeDiamondEdit();
   renderDiamondList();
 
-  if (hasConn) {
-    document.getElementById("mConnPrev").textContent = getFieldOverride(c, "connections.prev") || "";
-    document.getElementById("mConnNext").textContent = getFieldOverride(c, "connections.next") || "";
-    const contrastEl = document.getElementById("mConnContrast");
-    const contrastText = getFieldOverride(c, "connections.contrast");
-    contrastEl.textContent = contrastText || "";
-    contrastEl.style.display = contrastText ? "block" : "none";
-  }
+  [["mConnPrev", "connections.prev", "＋ 前のカードとのつながりを追加"],
+   ["mConnNext", "connections.next", "＋ 次のカードとのつながりを追加"],
+   ["mConnContrast", "connections.contrast", "＋ 対比を追加"]].forEach(([id, path, hint]) => {
+    const el = document.getElementById(id);
+    const text = getFieldOverride(c, path);
+    el.textContent = text || hint;
+    el.classList.toggle("conn-empty", !text);
+    el.style.display = (!text && location.protocol === "file:") ? "none" : ""; // オフライン版は入力できないので空の項目は隠す
+  });
+  ctxCardId = c.id;
+  closeCtxEdit();
+  renderCtxList();
   if (c.mnemonic) {
     document.getElementById("mMnemonicText").textContent = getFieldOverride(c, "mnemonic");
   }
@@ -644,6 +647,7 @@ function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
     }).then(r => r.json()).then(() => {
       symbolNotes[key] = { text: newText };
       document.getElementById(pId).textContent = newText;
+      document.getElementById(pId).classList.remove("conn-empty");
       document.getElementById(areaId).classList.remove("show");
       document.getElementById(pId).style.display = "";
       const savedEl = document.getElementById(savedId);
@@ -923,6 +927,75 @@ document.getElementById("symbolDetailDeleteLink").addEventListener("click", () =
 document.getElementById("symbolDetailClose").addEventListener("click", () => symbolDetailBackdrop.classList.add("hidden"));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") symbolDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") modalBackdrop.classList.add("hidden"); });
+
+// ---------- 【Context】の自由項目（タイトル＋説明） ----------
+let ctxNotes = {};
+let ctxCardId = null;
+let ctxEditId = null;
+
+fetch("/api/context-notes").then(r => r.ok ? r.json() : {}).then(data => {
+  ctxNotes = data || {};
+  renderCtxList();
+}).catch(() => {
+  if (window.OFFLINE_CONTEXT_NOTES) { ctxNotes = window.OFFLINE_CONTEXT_NOTES; renderCtxList(); }
+});
+
+function closeCtxEdit() {
+  ctxEditId = null;
+  document.getElementById("ctxEditArea").classList.remove("show");
+  document.getElementById("ctxAddBtn").style.display = IS_OFFLINE_FILE_CTX ? "none" : "";
+}
+const IS_OFFLINE_FILE_CTX = location.protocol === "file:";
+function openCtxEdit(note) {
+  ctxEditId = note ? note.id : null;
+  document.getElementById("ctxTitleInput").value = note ? note.title : "";
+  document.getElementById("ctxTextInput").value = note ? note.text : "";
+  document.getElementById("ctxDeleteBtn").style.display = note ? "inline-block" : "none";
+  document.getElementById("ctxEditArea").classList.add("show");
+  document.getElementById("ctxAddBtn").style.display = "none";
+  document.getElementById("ctxTitleInput").focus();
+}
+function renderCtxList() {
+  const listEl = document.getElementById("ctxList");
+  if (!listEl || !ctxCardId) return;
+  const list = ctxNotes[ctxCardId] || [];
+  listEl.innerHTML = "";
+  document.getElementById("ctxEmpty").style.display = list.length || IS_OFFLINE_FILE_CTX ? "none" : "block";
+  document.querySelector(".ctx-free").style.display = (IS_OFFLINE_FILE_CTX && !list.length) ? "none" : "";
+  list.forEach(n => {
+    const row = document.createElement("div");
+    row.className = "diamond-item";
+    row.innerHTML = '<div class="diamond-item-title"></div><div class="diamond-item-text"></div>';
+    row.querySelector(".diamond-item-title").textContent = n.title;
+    row.querySelector(".diamond-item-text").textContent = n.text || "";
+    if (!IS_OFFLINE_FILE_CTX) row.addEventListener("click", () => openCtxEdit(n));
+    listEl.appendChild(row);
+  });
+}
+function ctxPost(payload, failMsg) {
+  return fetch("/api/context-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ cardId: ctxCardId }, payload))
+  }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(data => {
+    if (data && data.notes) ctxNotes[ctxCardId] = data.notes;
+    closeCtxEdit();
+    renderCtxList();
+  }).catch(() => alert(failMsg));
+}
+document.getElementById("ctxAddBtn").addEventListener("click", () => openCtxEdit(null));
+document.getElementById("ctxCancelBtn").addEventListener("click", closeCtxEdit);
+document.getElementById("ctxSaveBtn").addEventListener("click", () => {
+  const title = document.getElementById("ctxTitleInput").value.trim();
+  const text = document.getElementById("ctxTextInput").value.trim();
+  if (!title) { document.getElementById("ctxTitleInput").focus(); return; }
+  ctxPost({ id: ctxEditId, title, text }, "保存に失敗しました。通信状態を確認してもう一度お試しください。");
+});
+document.getElementById("ctxDeleteBtn").addEventListener("click", () => {
+  if (!ctxEditId) return;
+  if (!confirm("この項目を削除しますか？")) return;
+  ctxPost({ id: ctxEditId, delete: true }, "削除に失敗しました。通信状態を確認してもう一度お試しください。");
+});
 
 // ---------- 【❖】ノート（タイトル＋説明。右下のMEMOとは別データ） ----------
 let diamondNotes = {};
@@ -2088,9 +2161,9 @@ renderGrid();
   link.addEventListener("click", () => {
     const get = (url) => fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.json(); });
     link.textContent = "書き出し中…";
-    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"), get("/api/courses")])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses]) => {
-        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, courses, exportedAt: new Date().toISOString() };
+    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"), get("/api/courses"), get("/api/context-notes")])
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes]) => {
+        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, exportedAt: new Date().toISOString() };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
