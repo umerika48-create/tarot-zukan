@@ -87,7 +87,7 @@ def load_symbol_notes():
     return notes
 
 def load_json_snapshot(filename, label):
-    key = {"added-symbols-snapshot.json": "addedSymbols", "memos-snapshot.json": "memos", "diamond-notes-snapshot.json": "diamondNotes", "courses-snapshot.json": "courses", "context-notes-snapshot.json": "contextNotes"}.get(filename)
+    key = {"added-symbols-snapshot.json": "addedSymbols", "memos-snapshot.json": "memos", "diamond-notes-snapshot.json": "diamondNotes", "courses-snapshot.json": "courses", "context-notes-snapshot.json": "contextNotes", "course-row-memos-snapshot.json": "courseRowMemos"}.get(filename)
     if BACKUP is not None and key and isinstance(BACKUP.get(key), dict):
         print(f"tarot-backup.json の{label}を使用（{len(BACKUP[key])}カード分）")
         return BACKUP[key]
@@ -100,12 +100,14 @@ def load_json_snapshot(filename, label):
     print(f"{filename} を読み込みました（{label}：{len(data)}カード分）")
     return data
 
-def offline_data_script(added_symbols, memos, diamond_notes=None, courses=None, context_notes=None):
+def offline_data_script(added_symbols, memos, diamond_notes=None, courses=None, context_notes=None, row_memos=None):
     parts = []
     if added_symbols is not None:
         parts.append("window.OFFLINE_ADDED_SYMBOLS = " + json.dumps(added_symbols, ensure_ascii=False) + ";")
     if memos is not None:
         parts.append("window.OFFLINE_MEMOS = " + json.dumps(memos, ensure_ascii=False) + ";")
+    if row_memos is not None:
+        parts.append("window.OFFLINE_COURSE_ROW_MEMOS = " + json.dumps(row_memos, ensure_ascii=False) + ";")
     if context_notes is not None:
         parts.append("window.OFFLINE_CONTEXT_NOTES = " + json.dumps(context_notes, ensure_ascii=False) + ";")
     if courses is not None:
@@ -227,7 +229,8 @@ def main():
     diamond_notes = load_json_snapshot("diamond-notes-snapshot.json", "❖ノート")
     courses = load_json_snapshot("courses-snapshot.json", "講座")
     context_notes = load_json_snapshot("context-notes-snapshot.json", "Context自由項目")
-    offline_script = offline_data_script(added_symbols, memos, diamond_notes, courses, context_notes)
+    row_memos = load_json_snapshot("course-row-memos-snapshot.json", "講座の行メモ")
+    offline_script = offline_data_script(added_symbols, memos, diamond_notes, courses, context_notes, row_memos)
 
     # 1) Google Fonts link を @font-face に置換
     font_css = build_font_face_css()

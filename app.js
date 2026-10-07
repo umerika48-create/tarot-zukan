@@ -1916,6 +1916,42 @@ function renderCourseList() {
   });
 }
 
+// ---- 講座のプログラム行ごとのMEMO（ラベルを押すと開く。保存先はKV） ----
+let courseRowMemos = {};
+fetch("/api/course-row-memos").then(r => r.ok ? r.json() : {}).then(d => {
+  courseRowMemos = d || {};
+  document.querySelectorAll(".course-program-item").forEach(r => r._refreshMemo && r._refreshMemo());
+}).catch(() => { if (window.OFFLINE_COURSE_ROW_MEMOS) courseRowMemos = window.OFFLINE_COURSE_ROW_MEMOS; });
+
+function setupRowMemo(row, courseId, idx) {
+  const tag = row.querySelector(".cp-memo-tag");
+  const area = row.querySelector(".cp-memo-area");
+  const ta = area.querySelector("textarea");
+  const saved = area.querySelector(".cp-memo-saved");
+  const offline = location.protocol === "file:";
+  const get = () => ((courseRowMemos[courseId] || {})[String(idx)]) || "";
+  row._refreshMemo = () => tag.classList.toggle("has", !!get());
+  row._refreshMemo();
+  if (offline) { area.querySelector(".save").style.display = "none"; ta.readOnly = true; }
+  tag.addEventListener("click", () => {
+    const open = area.classList.toggle("show");
+    tag.classList.toggle("open", open);
+    if (open) { ta.value = get(); saved.textContent = ""; }
+  });
+  area.querySelector(".close").addEventListener("click", () => { area.classList.remove("show"); tag.classList.remove("open"); });
+  area.querySelector(".save").addEventListener("click", () => {
+    fetch("/api/course-row-memos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId, idx, text: ta.value })
+    }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(d => {
+      courseRowMemos = d.memos || {};
+      row._refreshMemo();
+      saved.textContent = "保存しました";
+      setTimeout(() => { saved.textContent = ""; }, 2000);
+    }).catch(() => alert("保存に失敗しました。通信状態を確認してもう一度お試しください。"));
+  });
+}
+
 let currentCourseId = null;
 const courseDetailBackdrop = document.getElementById("courseDetailBackdrop");
 
@@ -1927,7 +1963,7 @@ function openCourseDetail(course) {
 
   const program = document.getElementById("courseProgram");
   program.innerHTML = "";
-  (course.program || []).forEach(item => {
+  (course.program || []).forEach((item, rowIdx) => {
     const row = document.createElement("div");
     row.className = "course-program-item";
 
@@ -1949,7 +1985,13 @@ function openCourseDetail(course) {
       <div class="course-program-body">
         <div class="cp-title">${escHtml(item.title)}</div>
         <div class="cp-desc">${descHtml}</div>
+        <span class="cp-memo-tag">MEMO</span>
+        <div class="cp-memo-area">
+          <textarea placeholder="この項目のメモ"></textarea>
+          <div class="cp-memo-btns"><button type="button" class="save">保存</button><button type="button" class="close">閉じる</button><span class="cp-memo-saved"></span></div>
+        </div>
       </div>`;
+    setupRowMemo(row, course.id, rowIdx);
 
     if (item.labels && item.labels.length) {
       row.querySelectorAll(".inline-glossary-label").forEach(span => {
@@ -2161,9 +2203,9 @@ renderGrid();
   link.addEventListener("click", () => {
     const get = (url) => fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.json(); });
     link.textContent = "書き出し中…";
-    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"), get("/api/courses"), get("/api/context-notes")])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes]) => {
-        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, exportedAt: new Date().toISOString() };
+    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"), get("/api/courses"), get("/api/context-notes"), get("/api/course-row-memos")])
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos]) => {
+        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, exportedAt: new Date().toISOString() };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
