@@ -177,37 +177,44 @@ function renderTimingTables() {
   if (suitTbl.dataset.done) return;
   suitTbl.dataset.done = "1";
 
-  let sh = `<div class="timing-row head"><div>スート</div><div>時期の目安</div><div>特徴</div></div>`;
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const head = (first) => `<div class="timing-row head"><div>${first}</div><div>時期の目安</div><div>特徴</div><div>場所</div></div>`;
+  const row = (name, term, feature, place) =>
+    `<div class="timing-row"><div class="tc-name">${esc(name)}</div><div class="tc-term">${esc(term)}</div><div class="tc-feature">${esc(feature)}</div><div class="tc-place">${esc(place)}</div></div>`;
+
+  let sh = head("スート");
   ["wands","cups","swords","pentacles"].forEach(s => {
     const t = TIMING_SUIT[s];
-    sh += `<div class="timing-row"><div class="tc-name">${SUIT_LABEL[s]}${SUIT_JA_SHORT[s]}</div><div class="tc-term">${t.term}</div><div class="tc-feature">${t.feature}</div></div>`;
+    sh += row(SUIT_LABEL[s] + SUIT_JA_SHORT[s], t.term, t.feature, t.place);
   });
   suitTbl.innerHTML = sh;
 
-  let ch = `<div class="timing-row head"><div>カード</div><div>時期の目安</div><div>特徴</div></div>`;
+  let ch = head("カード");
   [11,12,13,14].forEach(n => {
     const t = TIMING_COURT[n];
-    ch += `<div class="timing-row"><div class="tc-name">${t.label}</div><div class="tc-term">${t.term}</div><div class="tc-feature">${t.feature}</div></div>`;
+    ch += row(t.label, t.term, t.feature, t.place);
   });
   document.getElementById("timingCourtTable").innerHTML = ch;
 
-  let mh = `<div class="timing-row head"><div>カード</div><div>時期の目安</div><div>特徴</div></div>`;
+  let nh = `<div class="timing-row head"><div>数字</div><div>意味</div></div>`;
+  TIMING_NUMBER.forEach(n => {
+    nh += `<div class="timing-row"><div class="tc-num">${esc(n.num)}</div><div class="tc-meaning">${esc(n.meaning)}</div></div>`;
+  });
+  document.getElementById("timingNumberTable").innerHTML = nh;
+
+  let mh = head("カード");
   CARDS.filter(c => c.arcana === "major").forEach(c => {
     const t = TIMING_MAJOR[c.id];
-    mh += `<div class="timing-row"><div class="tc-name">${c.name_jp}</div><div class="tc-term">${t.term}</div><div class="tc-feature">${t.feature}</div></div>`;
+    mh += row(c.name_jp, t.term, t.feature, t.place);
   });
   document.getElementById("timingMajorTable").innerHTML = mh;
 
-  let lh = `<div class="timing-row head"><div>カード</div><div>時期の目安</div><div>特徴</div></div>`;
-  LENORMAND_CARDS.forEach(c => {
-    lh += `<div class="timing-row"><div class="tc-name">${c.name_jp}</div><div class="tc-term">${c.timing_term}</div><div class="tc-feature">${c.timing_feature}</div></div>`;
-  });
+  let lh = head("カード");
+  LENORMAND_CARDS.forEach(c => { lh += row(c.name_jp, c.timing_term, c.timing_feature, c.timing_place); });
   document.getElementById("timingLenormandTable").innerHTML = lh;
 
-  let rh = `<div class="timing-row head"><div>カード</div><div>時期の目安</div><div>特徴</div></div>`;
-  RUNE_CARDS.forEach(c => {
-    rh += `<div class="timing-row"><div class="tc-name">${c.name_en}／${c.name_jp}</div><div class="tc-term">${c.timing_term}</div><div class="tc-feature">${c.timing_feature}</div></div>`;
-  });
+  let rh = head("カード");
+  RUNE_CARDS.forEach(c => { rh += row(c.name_en + "／" + c.name_jp, c.timing_term, c.timing_feature, c.timing_place); });
   document.getElementById("timingRuneTable").innerHTML = rh;
 }
 
