@@ -1486,8 +1486,7 @@ document.getElementById("redrawBtn").addEventListener("click", resetDraw);
 document.getElementById("saveDrawBtn").addEventListener("click", () => {
   if (!drawnCard) return;
   const note = document.getElementById("drawNote").value.trim();
-  const entries = loadJournal();
-  entries.unshift({
+  const entry = {
     date: new Date().toISOString(),
     cardId: drawnCard.id,
     name: drawnCard.name_jp,
@@ -1495,13 +1494,28 @@ document.getElementById("saveDrawBtn").addEventListener("click", () => {
     note: note,
     mode: drawMode,
     deck: currentDeck
+  };
+  if (ZUKAN_IS_OFFLINE_FILE) {
+    const entries = loadJournal();
+    entries.unshift(entry);
+    saveJournal(entries);
+    document.getElementById("saveDrawBtn").textContent = "記録しました ✓";
+    document.getElementById("saveDrawBtn").disabled = true;
+    return;
+  }
+  zukanPost("/api/journal", { entry }).then(data => {
+    cloudJournal = data.entries || [];
+    document.getElementById("saveDrawBtn").textContent = "記録しました ✓";
+    document.getElementById("saveDrawBtn").disabled = true;
+  }).catch(err => {
+    if (err && err.zukanStale) return;
+    alert("記録に失敗しました。通信状態を確認してもう一度お試しください。");
   });
-  saveJournal(entries);
-  document.getElementById("saveDrawBtn").textContent = "記録しました ✓";
-  document.getElementById("saveDrawBtn").disabled = true;
 });
 
 // ---------- 記録（ジャーナル） ----------
+// localStorageの読み書きは、オフライン版(file://)での動作と、移行(クラウドへ送る)
+// ボタンでのバックアップ・送信元データとして、そのまま残してある。
 const JOURNAL_KEY = "tarot_journal_v1";
 function loadJournal() {
   try { return JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; } catch (e) { return []; }
@@ -1509,6 +1523,23 @@ function loadJournal() {
 function saveJournal(entries) {
   localStorage.setItem(JOURNAL_KEY, JSON.stringify(entries));
 }
+
+// クラウド(KV)側の記録。オフライン版では使わず、常にlocalStorageを使う。
+let cloudJournal = [];
+let journalLoadFailed = false;
+const journalReady = ZUKAN_IS_OFFLINE_FILE ? Promise.resolve() :
+  zukanVersionReady.then(() => fetch("/api/journal", { cache: "no-store" }))
+    .then(r => { if (!r.ok) throw new Error("load failed"); return r.json(); })
+    .then(data => { cloudJournal = Array.isArray(data) ? data : []; journalLoadFailed = false; })
+    .catch(() => { journalLoadFailed = true; })
+    .then(() => { updateJournalLoadErrorBanner(); renderJournal(); });
+
+function updateJournalLoadErrorBanner() {
+  const banner = document.getElementById("journalLoadError");
+  if (!banner) return;
+  banner.style.display = (journalLoadFailed || memoFoldersLoadFailed || memoNotesLoadFailed) ? "block" : "none";
+}
+
 function findCard(id, deck) {
   if (deck === "lenormand") return LENORMAND_CARDS.find(c => c.id === id);
   if (deck === "rune") return RUNE_CARDS.find(c => c.id === id);
@@ -1521,7 +1552,13 @@ function findCard(id, deck) {
 
 function renderJournal() {
   const list = document.getElementById("journalList");
-  const entries = loadJournal();
+  updateJournalLoadErrorBanner();
+  if (!ZUKAN_IS_OFFLINE_FILE && journalLoadFailed) {
+    list.innerHTML = "";
+    document.getElementById("journalEmpty").style.display = "none";
+    return;
+  }
+  const entries = ZUKAN_IS_OFFLINE_FILE ? loadJournal() : cloudJournal;
   list.innerHTML = "";
   document.getElementById("journalEmpty").style.display = entries.length ? "none" : "block";
   entries.forEach((e, idx) => {
@@ -1538,15 +1575,26 @@ function renderJournal() {
         <div class="jentry-name">${e.name}${e.deck === 'lenormand' ? '<span class="jentry-orient">ルノルマン</span>' : (e.deck === 'rune' ? '<span class="jentry-orient">ルーン</span>' : (e.mode === 'timing' ? '<span class="jentry-orient">時期読み</span>' : `<span class="jentry-orient ${e.reversed ? 'rv' : ''}">${e.reversed ? '逆位置' : '正位置'}</span>`))}</div>
         ${e.note ? `<div class="jentry-note">${escapeHtml(e.note)}</div>` : ""}
       </div>
-      <button class="jentry-del" title="削除" data-idx="${idx}">&times;</button>`;
+      <button class="jentry-del" title="削除" data-idx="${idx}" data-id="${e.id || ''}">&times;</button>`;
     list.appendChild(row);
   });
   list.querySelectorAll(".jentry-del").forEach(btn => {
     btn.addEventListener("click", () => {
-      const entries2 = loadJournal();
-      entries2.splice(Number(btn.dataset.idx), 1);
-      saveJournal(entries2);
-      renderJournal();
+      if (ZUKAN_IS_OFFLINE_FILE) {
+        const entries2 = loadJournal();
+        entries2.splice(Number(btn.dataset.idx), 1);
+        saveJournal(entries2);
+        renderJournal();
+        return;
+      }
+      // クラウド側は何番目かではなく、idで削除する。
+      zukanPost("/api/journal", { delete: true, id: btn.dataset.id }).then(data => {
+        cloudJournal = data.entries || [];
+        renderJournal();
+      }).catch(err => {
+        if (err && err.zukanStale) return;
+        alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
+      });
     });
   });
 }
@@ -1941,6 +1989,8 @@ document.getElementById("resultCard").addEventListener("click", () => {
 // 組み合わせ引き：カード画像クリックで拡大
 
 // ---------- 講座 ----------
+// localStorageの読み書きは、オフライン版(file://)での動作と、移行(クラウドへ送る)
+// ボタンでのバックアップ・送信元データとして、そのまま残してある。
 const COURSE_MEMO_KEY = "tarot_course_memo_v1";
 function loadCourseMemos() {
   try { return JSON.parse(localStorage.getItem(COURSE_MEMO_KEY)) || {}; } catch (e) { return {}; }
@@ -1949,6 +1999,19 @@ function saveCourseMemo(courseId, text) {
   const memos = loadCourseMemos();
   memos[courseId] = text;
   localStorage.setItem(COURSE_MEMO_KEY, JSON.stringify(memos));
+}
+
+// クラウド(KV)側の講座メモ。オフライン版では使わず、常にlocalStorageを使う。
+let cloudCourseMemos = {};
+let courseMemosLoadFailed = false;
+const courseMemosReady = ZUKAN_IS_OFFLINE_FILE ? Promise.resolve() :
+  zukanVersionReady.then(() => fetch("/api/course-memos", { cache: "no-store" }))
+    .then(r => { if (!r.ok) throw new Error("load failed"); return r.json(); })
+    .then(data => { cloudCourseMemos = (data && typeof data === "object") ? data : {}; courseMemosLoadFailed = false; })
+    .catch(() => { courseMemosLoadFailed = true; });
+function getCourseMemo(courseId) {
+  if (ZUKAN_IS_OFFLINE_FILE) return loadCourseMemos()[courseId] || "";
+  return cloudCourseMemos[courseId] || "";
 }
 
 function escHtml(s) {
@@ -2080,9 +2143,17 @@ function openCourseDetail(course) {
     program.appendChild(row);
   });
 
-  const memos = loadCourseMemos();
-  document.getElementById("courseMemoBox").value = memos[course.id] || "";
-  document.getElementById("courseMemoStatus").textContent = "";
+  const memoBox = document.getElementById("courseMemoBox");
+  const memoStatus = document.getElementById("courseMemoStatus");
+  if (!ZUKAN_IS_OFFLINE_FILE && courseMemosLoadFailed) {
+    memoBox.value = "";
+    memoBox.readOnly = true;
+    memoStatus.textContent = "読み込めませんでした。通信を確認してください。";
+  } else {
+    memoBox.readOnly = false;
+    memoBox.value = getCourseMemo(course.id);
+    memoStatus.textContent = "";
+  }
 
   courseDetailBackdrop.classList.remove("hidden");
 }
@@ -2107,9 +2178,20 @@ document.getElementById("courseMemoBox").addEventListener("input", (e) => {
   const status = document.getElementById("courseMemoStatus");
   status.textContent = "";
   courseMemoTimer = setTimeout(() => {
-    saveCourseMemo(currentCourseId, e.target.value);
-    status.textContent = "保存しました";
-    setTimeout(() => { status.textContent = ""; }, 1500);
+    if (ZUKAN_IS_OFFLINE_FILE) {
+      saveCourseMemo(currentCourseId, e.target.value);
+      status.textContent = "保存しました";
+      setTimeout(() => { status.textContent = ""; }, 1500);
+      return;
+    }
+    zukanPost("/api/course-memos", { courseId: currentCourseId, text: e.target.value }).then(data => {
+      cloudCourseMemos = (data && data.memos) || cloudCourseMemos;
+      status.textContent = "保存しました";
+      setTimeout(() => { status.textContent = ""; }, 1500);
+    }).catch(err => {
+      if (err && err.zukanStale) return;
+      status.textContent = "保存に失敗しました";
+    });
   }, 500);
 });
 
@@ -2276,9 +2358,17 @@ renderGrid();
   link.addEventListener("click", () => {
     const get = (url) => fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.json(); });
     link.textContent = "書き出し中…";
-    Promise.all([get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"), get("/api/courses"), get("/api/context-notes"), get("/api/course-row-memos")])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos]) => {
-        const backup = { symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, exportedAt: new Date().toISOString() };
+    Promise.all([
+      get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"),
+      get("/api/courses"), get("/api/context-notes"), get("/api/course-row-memos"),
+      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos")
+    ])
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos]) => {
+        const backup = {
+          symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos,
+          journal, memoFolders, memoNotes, courseMemos,
+          exportedAt: new Date().toISOString()
+        };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -2297,6 +2387,8 @@ renderGrid();
 })();
 
 // ---------- 記録：メモ（フォルダ管理） ----------
+// localStorageの読み書きは、オフライン版(file://)での動作と、移行(クラウドへ送る)
+// ボタンでのバックアップ・送信元データとして、そのまま残してある。
 const MEMO_FOLDERS_KEY = "tarot_memo_folders_v1";
 const MEMO_NOTES_KEY = "tarot_memo_notes_v1";
 
@@ -2315,6 +2407,28 @@ function saveMemoNotes(notes) {
 function genMemoId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
+
+// クラウド(KV)側のフォルダ・メモ。オフライン版では使わず、常にlocalStorageを使う。
+let cloudMemoFolders = [];
+let memoFoldersLoadFailed = false;
+const memoFoldersReady = ZUKAN_IS_OFFLINE_FILE ? Promise.resolve() :
+  zukanVersionReady.then(() => fetch("/api/memo-folders", { cache: "no-store" }))
+    .then(r => { if (!r.ok) throw new Error("load failed"); return r.json(); })
+    .then(data => { cloudMemoFolders = Array.isArray(data) ? data : []; memoFoldersLoadFailed = false; })
+    .catch(() => { memoFoldersLoadFailed = true; })
+    .then(() => { updateJournalLoadErrorBanner(); renderMemoFolderList(); });
+
+let cloudMemoNotes = [];
+let memoNotesLoadFailed = false;
+const memoNotesReady = ZUKAN_IS_OFFLINE_FILE ? Promise.resolve() :
+  zukanVersionReady.then(() => fetch("/api/memo-notes", { cache: "no-store" }))
+    .then(r => { if (!r.ok) throw new Error("load failed"); return r.json(); })
+    .then(data => { cloudMemoNotes = Array.isArray(data) ? data : []; memoNotesLoadFailed = false; })
+    .catch(() => { memoNotesLoadFailed = true; })
+    .then(() => { updateJournalLoadErrorBanner(); renderMemoFolderList(); });
+
+function getMemoFolders() { return ZUKAN_IS_OFFLINE_FILE ? loadMemoFolders() : cloudMemoFolders; }
+function getMemoNotes() { return ZUKAN_IS_OFFLINE_FILE ? loadMemoNotes() : cloudMemoNotes; }
 
 let currentMemoFolderId = null;
 let currentMemoNoteId = null;
@@ -2347,9 +2461,14 @@ function showMemoFolderListScreen() {
   renderMemoFolderList();
 }
 function renderMemoFolderList() {
-  const folders = loadMemoFolders();
-  const notes = loadMemoNotes();
   const itemsEl = document.getElementById("memoFolderListItems");
+  if (!ZUKAN_IS_OFFLINE_FILE && (memoFoldersLoadFailed || memoNotesLoadFailed)) {
+    itemsEl.innerHTML = "";
+    document.getElementById("memoFolderEmpty").style.display = "none";
+    return;
+  }
+  const folders = getMemoFolders();
+  const notes = getMemoNotes();
   itemsEl.innerHTML = "";
   document.getElementById("memoFolderEmpty").style.display = folders.length ? "none" : "block";
   folders.forEach(f => {
@@ -2379,30 +2498,61 @@ function renderMemoFolderList() {
 }
 document.getElementById("memoFolderAddLink").addEventListener("click", () => {
   const name = (prompt("フォルダ名を入力してください（空欄のままでも作成できます）") || "").trim();
-  const folders = loadMemoFolders();
-  folders.push({ id: genMemoId(), name: name || "無題フォルダ" });
-  saveMemoFolders(folders);
-  renderMemoFolderList();
+  if (ZUKAN_IS_OFFLINE_FILE) {
+    const folders = loadMemoFolders();
+    folders.push({ id: genMemoId(), name: name || "無題フォルダ" });
+    saveMemoFolders(folders);
+    renderMemoFolderList();
+    return;
+  }
+  zukanPost("/api/memo-folders", { folder: { name: name || "無題フォルダ" } }).then(data => {
+    cloudMemoFolders = data.folders || [];
+    renderMemoFolderList();
+  }).catch(err => {
+    if (err && err.zukanStale) return;
+    alert("作成に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
 });
 function deleteMemoFolder(folderId, folderName, noteCount) {
   const msg = noteCount > 0
     ? `「${folderName}」を削除しますか？中の${noteCount}件のメモも一緒に削除されます。`
     : `「${folderName}」を削除しますか？`;
   if (!confirm(msg)) return;
-  saveMemoFolders(loadMemoFolders().filter(f => f.id !== folderId));
-  saveMemoNotes(loadMemoNotes().filter(n => n.folderId !== folderId));
-  renderMemoFolderList();
+  if (ZUKAN_IS_OFFLINE_FILE) {
+    saveMemoFolders(loadMemoFolders().filter(f => f.id !== folderId));
+    saveMemoNotes(loadMemoNotes().filter(n => n.folderId !== folderId));
+    renderMemoFolderList();
+    return;
+  }
+  zukanPost("/api/memo-folders", { delete: true, id: folderId }).then(data => {
+    cloudMemoFolders = data.folders || [];
+    cloudMemoNotes = cloudMemoNotes.filter(n => n.folderId !== folderId);
+    renderMemoFolderList();
+  }).catch(err => {
+    if (err && err.zukanStale) return;
+    alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
 }
 function renameMemoFolder(folderId, currentName) {
   const input = prompt("フォルダ名を入力してください（空欄のままでも保存できます）", currentName);
   if (input === null) return;
   const name = input.trim();
-  const folders = loadMemoFolders();
-  const folder = folders.find(f => f.id === folderId);
-  if (!folder) return;
-  folder.name = name || "無題フォルダ";
-  saveMemoFolders(folders);
-  renderMemoFolderList();
+  if (ZUKAN_IS_OFFLINE_FILE) {
+    const folders = loadMemoFolders();
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return;
+    folder.name = name || "無題フォルダ";
+    saveMemoFolders(folders);
+    renderMemoFolderList();
+    return;
+  }
+  zukanPost("/api/memo-folders", { folder: { id: folderId, name: name || "無題フォルダ" } }).then(data => {
+    cloudMemoFolders = data.folders || [];
+    renderMemoFolderList();
+  }).catch(err => {
+    if (err && err.zukanStale) return;
+    alert("変更に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
 }
 
 // --- フォルダ内のメモ一覧 ---
@@ -2412,11 +2562,16 @@ function openMemoFolder(folderId) {
   renderMemoNoteList();
 }
 function renderMemoNoteList() {
-  const folder = loadMemoFolders().find(f => f.id === currentMemoFolderId);
+  const folder = getMemoFolders().find(f => f.id === currentMemoFolderId);
   document.getElementById("memoNoteListFolderName").textContent = folder ? folder.name : "";
-  const notes = loadMemoNotes().filter(n => n.folderId === currentMemoFolderId)
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   const itemsEl = document.getElementById("memoNoteListItems");
+  if (!ZUKAN_IS_OFFLINE_FILE && memoNotesLoadFailed) {
+    itemsEl.innerHTML = "";
+    document.getElementById("memoNoteListEmpty").style.display = "none";
+    return;
+  }
+  const notes = getMemoNotes().filter(n => n.folderId === currentMemoFolderId)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   itemsEl.innerHTML = "";
   document.getElementById("memoNoteListEmpty").style.display = notes.length ? "none" : "block";
   notes.forEach(n => {
@@ -2436,8 +2591,19 @@ function renderMemoNoteList() {
     row.querySelector(".memo-note-item-del").addEventListener("click", (e) => {
       e.stopPropagation();
       if (!confirm("このメモを削除しますか？")) return;
-      saveMemoNotes(loadMemoNotes().filter(x => x.id !== n.id));
-      renderMemoNoteList();
+      if (ZUKAN_IS_OFFLINE_FILE) {
+        saveMemoNotes(loadMemoNotes().filter(x => x.id !== n.id));
+        renderMemoNoteList();
+        return;
+      }
+      zukanPost("/api/memo-notes", { delete: true, id: n.id }).then(data => {
+        cloudMemoNotes = data.notes || [];
+        renderMemoNoteList();
+        renderMemoFolderList();
+      }).catch(err => {
+        if (err && err.zukanStale) return;
+        alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
+      });
     });
     row.addEventListener("click", () => openMemoNoteEdit(n.id));
     itemsEl.appendChild(row);
@@ -2450,7 +2616,7 @@ document.getElementById("memoNoteAddLink").addEventListener("click", () => openM
 function populateMemoFolderSelect(selectedFolderId) {
   const sel = document.getElementById("memoNoteFolderSelect");
   sel.innerHTML = "";
-  loadMemoFolders().forEach(f => {
+  getMemoFolders().forEach(f => {
     const opt = document.createElement("option");
     opt.value = f.id;
     opt.textContent = f.name;
@@ -2460,7 +2626,7 @@ function populateMemoFolderSelect(selectedFolderId) {
 }
 function openMemoNoteEdit(noteId) {
   currentMemoNoteId = noteId;
-  const note = noteId ? loadMemoNotes().find(n => n.id === noteId) : null;
+  const note = noteId ? getMemoNotes().find(n => n.id === noteId) : null;
   document.getElementById("memoNoteTitleInput").value = note ? note.title : "";
   document.getElementById("memoNoteSubtitleInput").value = note ? note.subtitle : "";
   document.getElementById("memoNoteTextInput").value = note ? note.text : "";
@@ -2480,34 +2646,145 @@ document.getElementById("memoNoteSaveBtn").addEventListener("click", () => {
   const subtitle = document.getElementById("memoNoteSubtitleInput").value.trim();
   const text = document.getElementById("memoNoteTextInput").value;
   const folderId = document.getElementById("memoNoteFolderSelect").value;
-  const notes = loadMemoNotes();
-  if (currentMemoNoteId) {
-    const note = notes.find(n => n.id === currentMemoNoteId);
-    if (note) {
-      note.title = title;
-      note.subtitle = subtitle;
-      note.text = text;
-      note.folderId = folderId;
-      note.updatedAt = Date.now();
+  if (ZUKAN_IS_OFFLINE_FILE) {
+    const notes = loadMemoNotes();
+    if (currentMemoNoteId) {
+      const note = notes.find(n => n.id === currentMemoNoteId);
+      if (note) {
+        note.title = title;
+        note.subtitle = subtitle;
+        note.text = text;
+        note.folderId = folderId;
+        note.updatedAt = Date.now();
+      }
+    } else {
+      currentMemoNoteId = genMemoId();
+      notes.push({ id: currentMemoNoteId, folderId, title, subtitle, text, updatedAt: Date.now() });
     }
-  } else {
-    currentMemoNoteId = genMemoId();
-    notes.push({ id: currentMemoNoteId, folderId, title, subtitle, text, updatedAt: Date.now() });
+    saveMemoNotes(notes);
+    currentMemoFolderId = folderId;
+    const savedEl = document.getElementById("memoNoteSaved");
+    savedEl.classList.add("show");
+    setTimeout(() => {
+      savedEl.classList.remove("show");
+      showMemoScreen("notes");
+      renderMemoNoteList();
+    }, 500);
+    return;
   }
-  saveMemoNotes(notes);
-  currentMemoFolderId = folderId;
-  const savedEl = document.getElementById("memoNoteSaved");
-  savedEl.classList.add("show");
-  setTimeout(() => {
-    savedEl.classList.remove("show");
-    showMemoScreen("notes");
-    renderMemoNoteList();
-  }, 500);
+  zukanPost("/api/memo-notes", { note: { id: currentMemoNoteId || undefined, folderId, title, subtitle, text } }).then(data => {
+    cloudMemoNotes = data.notes || [];
+    currentMemoNoteId = null;
+    currentMemoFolderId = folderId;
+    const savedEl = document.getElementById("memoNoteSaved");
+    savedEl.classList.add("show");
+    setTimeout(() => {
+      savedEl.classList.remove("show");
+      showMemoScreen("notes");
+      renderMemoNoteList();
+      renderMemoFolderList();
+    }, 500);
+  }).catch(err => {
+    if (err && err.zukanStale) return;
+    alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
 });
 document.getElementById("memoNoteDeleteBtn").addEventListener("click", () => {
   if (!currentMemoNoteId) return;
   if (!confirm("このメモを削除しますか？")) return;
-  saveMemoNotes(loadMemoNotes().filter(n => n.id !== currentMemoNoteId));
-  showMemoScreen("notes");
-  renderMemoNoteList();
+  if (ZUKAN_IS_OFFLINE_FILE) {
+    saveMemoNotes(loadMemoNotes().filter(n => n.id !== currentMemoNoteId));
+    showMemoScreen("notes");
+    renderMemoNoteList();
+    return;
+  }
+  zukanPost("/api/memo-notes", { delete: true, id: currentMemoNoteId }).then(data => {
+    cloudMemoNotes = data.notes || [];
+    showMemoScreen("notes");
+    renderMemoNoteList();
+    renderMemoFolderList();
+  }).catch(err => {
+    if (err && err.zukanStale) return;
+    alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
+  });
 });
+
+// ---------- 記録・メモをクラウドに送る(移行) ----------
+// この端末のlocalStorageに入っている「記録」「メモのフォルダ」「メモ本体」「講座メモ」を、
+// クラウド(KV)へ送る。安全のため、送る前に必ずこの端末の分をJSONファイルとしてダウンロードする。
+// すでにクラウドにある分は上書きしない(import側で判定)ので、何度押しても増えない。
+// 成功してもlocalStorageのデータは消さない(そのまま残す)。
+function downloadLocalJournalBackup() {
+  const backup = {
+    journal: loadJournal(),
+    memoFolders: loadMemoFolders(),
+    memoNotes: loadMemoNotes(),
+    courseMemos: loadCourseMemos(),
+    exportedAt: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  const ts = backup.exportedAt.replace(/[:.]/g, "-");
+  a.href = URL.createObjectURL(blob);
+  a.download = `tarot-local-backup-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  return backup;
+}
+
+function describeMigrateResult(label, r) {
+  if (!r) return `${label}：実行できませんでした`;
+  if (!r.ok) return `${label}：失敗しました${r.stale ? "(画面が古くなっています。更新してからやり直してください)" : ""}`;
+  return `${label}：追加${r.added}件 / すでにあって飛ばした${r.skipped}件`;
+}
+
+function migrateLocalDataToCloud() {
+  if (ZUKAN_IS_OFFLINE_FILE) return;
+  const backup = downloadLocalJournalBackup();
+  const journalCount = backup.journal.length;
+  const folderCount = backup.memoFolders.length;
+  const noteCount = backup.memoNotes.length;
+  const courseMemoCount = Object.keys(backup.courseMemos).length;
+  const confirmMsg = `記録${journalCount}件、フォルダ${folderCount}件、メモ${noteCount}件、講座メモ${courseMemoCount}件を送ります。すでにクラウドにあるものは消えません。送りますか？`;
+  if (!confirm(confirmMsg)) return;
+
+  const btn = document.getElementById("journalMigrateBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "送信中…"; }
+
+  const results = {};
+  zukanPost("/api/journal", { import: true, entries: backup.journal })
+    .then(data => { cloudJournal = data.entries || cloudJournal; results.journal = { ok: true, added: data.added, skipped: data.skipped }; })
+    .catch(err => { results.journal = { ok: false, stale: !!(err && err.zukanStale) }; })
+    .then(() => zukanPost("/api/memo-folders", { import: true, folders: backup.memoFolders }))
+    .then(data => { cloudMemoFolders = data.folders || cloudMemoFolders; results.memoFolders = { ok: true, added: data.added, skipped: data.skipped }; })
+    .catch(err => { results.memoFolders = { ok: false, stale: !!(err && err.zukanStale) }; })
+    .then(() => zukanPost("/api/memo-notes", { import: true, notes: backup.memoNotes }))
+    .then(data => { cloudMemoNotes = data.notes || cloudMemoNotes; results.memoNotes = { ok: true, added: data.added, skipped: data.skipped }; })
+    .catch(err => { results.memoNotes = { ok: false, stale: !!(err && err.zukanStale) }; })
+    .then(() => zukanPost("/api/course-memos", { import: true, memos: backup.courseMemos }))
+    .then(data => { cloudCourseMemos = data.memos || cloudCourseMemos; results.courseMemos = { ok: true, added: data.added, skipped: data.skipped }; })
+    .catch(err => { results.courseMemos = { ok: false, stale: !!(err && err.zukanStale) }; })
+    .then(() => {
+      if (btn) { btn.disabled = false; btn.textContent = "この端末の記録・メモをクラウドに送る"; }
+      renderJournal();
+      renderMemoFolderList();
+      const allOk = ["journal", "memoFolders", "memoNotes", "courseMemos"].every(k => results[k] && results[k].ok);
+      const header = allOk ? "送信しました。" : "一部、送信できなかったものがあります(すでに送れた分はそのままクラウドに残ります)。";
+      const lines = [
+        describeMigrateResult("記録", results.journal),
+        describeMigrateResult("フォルダ", results.memoFolders),
+        describeMigrateResult("メモ", results.memoNotes),
+        describeMigrateResult("講座メモ", results.courseMemos)
+      ];
+      alert(header + "\n" + lines.join("\n") + "\n\nこの端末の分は、念のため残してあります。");
+    });
+}
+
+if (ZUKAN_IS_OFFLINE_FILE) {
+  const wrap = document.getElementById("journalMigrateWrap");
+  if (wrap) wrap.style.display = "none";
+} else {
+  const migrateBtn = document.getElementById("journalMigrateBtn");
+  if (migrateBtn) migrateBtn.addEventListener("click", migrateLocalDataToCloud);
+}
