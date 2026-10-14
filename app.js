@@ -10,6 +10,117 @@ let currentDictDeck = "tarot"; // "tarot" | "lenormand" | "rune"
 let currentGridList = [];
 let currentModalIndex = -1;
 
+// ===== 古い画面の検知（複数端末・複数タブ対応） =====
+// Ericaが複数の端末で図鑑を開いたままにしていると、「今見ている画面」が古くなっている
+// のに気づかず保存してしまい、他の端末での編集が上書きで消えてしまう事故が起きうる。
+// cafe-kai-kanriの同じ仕組み(checkVersionStaleness/showStaleScreenBanner/STALE_SCREEN/
+// SAVE_IN_FLIGHT)に揃えてある。
+const ZUKAN_IS_OFFLINE_FILE = location.protocol === "file:"; // build_offline.pyが作るオフライン版
+const ZUKAN_PENDING_SAVE_KEY = "zukanPendingSave_v1";
+let ZUKAN_VERSION = ""; // サーバーの更新番号。空のうち(初回・未取得時)は「古い画面」の判定をしない
+let STALE_SCREEN = false;
+// 自分の保存(zukanPostのPOST)が進行中かどうか。trueの間はcheckVersionStalenessを
+// 行わない/その結果を使わない(自分の保存を「古い画面」と誤判定しないため)。
+let SAVE_IN_FLIGHT = false;
+let ZUKAN_SAVE_QUEUE = Promise.resolve(); // 保存を1つずつ順番に行うための待ち行列(同時に2つ走らせない)
+
+function showStaleScreenBanner() {
+  if (document.getElementById("staleScreenBanner")) return;
+  const b = document.createElement("div");
+  b.id = "staleScreenBanner";
+  b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;background:#b23b5a;color:#fff;padding:10px;text-align:center;font-size:12px;";
+  b.innerHTML = "⚠️ 他の端末で更新されました。更新してから使ってください。" +
+    '<button onclick="location.reload()" style="margin-left:8px;padding:4px 10px;border-radius:14px;border:none;background:#fff;color:#b23b5a;font-weight:700;">更新する</button>';
+  document.body.appendChild(b);
+}
+
+// 止めた保存の内容を、次回この画面を開いたときのために端末内(localStorage)へ1件だけ退避する。
+// 復元のためのバナー等は作っていない(退避のみ)。容量オーバー等は無視する(致命的ではない)。
+function backupZukanPendingSave(url, body, reason) {
+  try {
+    localStorage.setItem(ZUKAN_PENDING_SAVE_KEY, JSON.stringify({ url, body, reason, ts: Date.now() }));
+  } catch (e) { /* 容量オーバー等は無視 */ }
+}
+
+// 画面が古くなっていないかの軽い確認(/api/version)。
+// 他の端末・タブが先に保存すると、このタブが覚えているZUKAN_VERSIONが古くなる。
+// 保存する前に気づけるよう、定期的にサーバーの最新バージョンと突き合わせる。
+function checkVersionStaleness() {
+  if (ZUKAN_IS_OFFLINE_FILE || SAVE_IN_FLIGHT || !ZUKAN_VERSION) return;
+  const requestedVersion = ZUKAN_VERSION;
+  fetch("/api/version", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(j => {
+    // 確認している間に保存が始まった/ZUKAN_VERSIONが変わったら、この結果は古いので捨てる
+    if (SAVE_IN_FLIGHT || ZUKAN_VERSION !== requestedVersion) return;
+    if (!j || !j.v) return; // バージョン情報が空のときは誤警告しないよう何もしない
+    if (j.v !== ZUKAN_VERSION) {
+      STALE_SCREEN = true;
+      showStaleScreenBanner();
+    }
+  }).catch(() => { /* 通信エラー時は何もしない(誤警告しない) */ });
+}
+
+// 起動時：7つのGET(symbol-notes/added-symbols/memos/diamond-notes/context-notes/courses/
+// course-row-memos)を始める前に、先に/api/versionを読む(版が先、データが後。こうすれば、
+// 取得の合間に誰かが保存しても「古い画面」と判定される安全側になる)。
+const zukanVersionReady = ZUKAN_IS_OFFLINE_FILE ? Promise.resolve() :
+  fetch("/api/version", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(j => {
+    if (j && j.v) ZUKAN_VERSION = j.v;
+  }).catch(() => {});
+
+// 図鑑の7つの保存APIすべてで使う共通の保存処理。
+// - 保存は1つずつ順番に行う(同時に2つ走らせない)。
+// - 古い画面(STALE_SCREEN)、またはサーバーが409(stale)を返した場合は保存を止めて帯を出す。
+//   入力中の文字は消さず、止めた保存の内容をlocalStorageに退避する。
+// - 成功したらレスポンスヘッダーのX-Zukan-VersionでZUKAN_VERSIONを更新する。
+// 呼び出し側は .then(data => ...) で成功時のJSONを受け取り、.catch(err => ...) で失敗を
+// 受け取る。errがzukanStale:trueの場合は「古い画面」として帯で案内済みなので、
+// 呼び出し側で重ねてアラートを出す必要はない。
+function zukanPost(url, body) {
+  ZUKAN_SAVE_QUEUE = ZUKAN_SAVE_QUEUE.then(() => zukanPostNow(url, body), () => zukanPostNow(url, body));
+  return ZUKAN_SAVE_QUEUE;
+}
+function zukanPostNow(url, body) {
+  if (STALE_SCREEN) {
+    backupZukanPendingSave(url, body, "stale");
+    showStaleScreenBanner();
+    return Promise.reject({ zukanStale: true });
+  }
+  SAVE_IN_FLIGHT = true;
+  backupZukanPendingSave(url, body, "saving");
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Zukan-Version": ZUKAN_VERSION || "" },
+    body: JSON.stringify(body)
+  }).then(res => {
+    if (res.status === 409) {
+      SAVE_IN_FLIGHT = false;
+      STALE_SCREEN = true;
+      showStaleScreenBanner();
+      return Promise.reject({ zukanStale: true });
+    }
+    if (!res.ok) {
+      SAVE_IN_FLIGHT = false;
+      return Promise.reject(new Error("save failed: " + res.status));
+    }
+    const newVersion = res.headers.get("X-Zukan-Version");
+    if (newVersion) ZUKAN_VERSION = newVersion;
+    SAVE_IN_FLIGHT = false;
+    try { localStorage.removeItem(ZUKAN_PENDING_SAVE_KEY); } catch (e) {}
+    return res.json();
+  }, err => {
+    SAVE_IN_FLIGHT = false;
+    throw err;
+  });
+}
+
+if (!ZUKAN_IS_OFFLINE_FILE) {
+  // 約15秒ごと、タブが再び表に出てきたとき、ウィンドウにフォーカスが戻ったときに
+  // 画面が古くなっていないかを確かめる(他の端末・タブが先に保存した場合の事故防止)。
+  setInterval(checkVersionStaleness, 15000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVersionStaleness(); });
+  window.addEventListener("focus", checkVersionStaleness);
+}
+
 // ---------- ナビゲーション ----------
 const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), courses: document.getElementById("view-courses"), journal: document.getElementById("view-journal") };
 const titles = {
@@ -647,11 +758,7 @@ function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
     const newText = document.getElementById(taId).value.trim();
     if (!newText) return;
     const key = card.id + ":" + pathOf(card);
-    fetch("/api/symbol-notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: key, text: newText })
-    }).then(r => r.json()).then(() => {
+    zukanPost("/api/symbol-notes", { key: key, text: newText }).then(() => {
       symbolNotes[key] = { text: newText };
       document.getElementById(pId).textContent = newText;
       document.getElementById(pId).classList.remove("conn-empty");
@@ -660,7 +767,8 @@ function setupTapEdit(pId, areaId, taId, saveId, cancelId, savedId, path) {
       const savedEl = document.getElementById(savedId);
       savedEl.classList.add("show");
       setTimeout(() => savedEl.classList.remove("show"), 2000);
-    }).catch(() => {
+    }).catch(err => {
+      if (err && err.zukanStale) return;
       alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
     });
   });
@@ -701,13 +809,13 @@ function getSymbolText(card, index) {
   const note = symbolNotes[key];
   return (note && note.text) ? note.text : card.symbols[index].text;
 }
-fetch("/api/symbol-notes").then(r => r.ok ? r.json() : {}).then(data => {
+zukanVersionReady.then(() => fetch("/api/symbol-notes")).then(r => r.ok ? r.json() : {}).then(data => {
   symbolNotes = data || {};
 }).catch(() => {});
 
 let addedSymbols = {};
 let currentAddedSymbolId = null;
-fetch("/api/added-symbols").then(r => r.ok ? r.json() : {}).then(data => {
+zukanVersionReady.then(() => fetch("/api/added-symbols")).then(r => r.ok ? r.json() : {}).then(data => {
   addedSymbols = data || {};
 }).catch(() => {
   // オフライン版：ビルド時に焼き込まれたスナップショットを使う
@@ -768,15 +876,12 @@ document.getElementById("addSymbolSaveBtn").addEventListener("click", () => {
     alert("ラベル・タイトル・説明文をすべて入力してください。");
     return;
   }
-  fetch("/api/added-symbols", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cardId: card.id, label: label, title: title, text: text })
-  }).then(r => r.json()).then(data => {
+  zukanPost("/api/added-symbols", { cardId: card.id, label: label, title: title, text: text }).then(data => {
     if (data && data.symbols) addedSymbols[card.id] = data.symbols;
     renderAddedChips(card);
     document.getElementById("addSymbolArea").classList.remove("show");
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -799,11 +904,7 @@ document.getElementById("catchEditSaveBtn").addEventListener("click", () => {
   const newText = document.getElementById("catchEditTextarea").value.trim();
   if (!newText) return;
   const key = card.id + ":catchphrase";
-  fetch("/api/symbol-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: key, text: newText })
-  }).then(r => r.json()).then(() => {
+  zukanPost("/api/symbol-notes", { key: key, text: newText }).then(() => {
     symbolNotes[key] = { text: newText };
     document.getElementById("mCatch").textContent = newText;
     document.getElementById("catchEditArea").classList.remove("show");
@@ -811,7 +912,8 @@ document.getElementById("catchEditSaveBtn").addEventListener("click", () => {
     const savedEl = document.getElementById("catchEditSaved");
     savedEl.classList.add("show");
     setTimeout(() => savedEl.classList.remove("show"), 2000);
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -846,11 +948,7 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
   if (!newLabel || !newTitle || !newText) return;
   const card = currentSymbolDetailCard;
   if (currentAddedSymbolId) {
-    fetch("/api/added-symbols", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cardId: card.id, id: currentAddedSymbolId, label: newLabel, title: newTitle, text: newText })
-    }).then(r => r.json()).then(data => {
+    zukanPost("/api/added-symbols", { cardId: card.id, id: currentAddedSymbolId, label: newLabel, title: newTitle, text: newText }).then(data => {
       if (data && data.symbols) addedSymbols[card.id] = data.symbols;
       document.getElementById("symbolDetailTitle").textContent = newTitle;
       document.getElementById("symbolDetailText").textContent = newText;
@@ -861,17 +959,14 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
       const savedEl = document.getElementById("symbolEditSaved");
       savedEl.classList.add("show");
       setTimeout(() => savedEl.classList.remove("show"), 2000);
-    }).catch(() => {
+    }).catch(err => {
+      if (err && err.zukanStale) return;
       alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
     });
     return;
   }
   const key = symbolNoteKey(currentSymbolDetailCard, currentSymbolDetailIndex);
-  fetch("/api/symbol-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: key, label: newLabel, title: newTitle, text: newText })
-  }).then(r => r.json()).then(() => {
+  zukanPost("/api/symbol-notes", { key: key, label: newLabel, title: newTitle, text: newText }).then(() => {
     const existing = symbolNotes[key] || {};
     existing.label = newLabel;
     existing.title = newTitle;
@@ -886,7 +981,8 @@ document.getElementById("symbolEditSaveBtn").addEventListener("click", () => {
     const savedEl = document.getElementById("symbolEditSaved");
     savedEl.classList.add("show");
     setTimeout(() => savedEl.classList.remove("show"), 2000);
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -894,15 +990,12 @@ document.getElementById("symbolDeleteBtn").addEventListener("click", () => {
   if (!currentSymbolDetailCard || !currentAddedSymbolId) return;
   if (!confirm("このラベルを削除しますか？")) return;
   const card = currentSymbolDetailCard;
-  fetch("/api/added-symbols", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cardId: card.id, id: currentAddedSymbolId, delete: true })
-  }).then(r => r.json()).then(data => {
+  zukanPost("/api/added-symbols", { cardId: card.id, id: currentAddedSymbolId, delete: true }).then(data => {
     if (data && data.symbols) addedSymbols[card.id] = data.symbols;
     renderAddedChips(card);
     symbolDetailBackdrop.classList.add("hidden");
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -917,17 +1010,14 @@ document.getElementById("symbolDetailDeleteLink").addEventListener("click", () =
   const key = symbolNoteKey(card, index);
   const newHidden = !isSymbolHidden(card, index);
   if (newHidden && !confirm("このシンボルを図鑑から非表示にしますか？（あとで「非表示にしたシンボル」から再表示できます）")) return;
-  fetch("/api/symbol-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: key, hidden: newHidden })
-  }).then(r => r.json()).then(() => {
+  zukanPost("/api/symbol-notes", { key: key, hidden: newHidden }).then(() => {
     const existing = symbolNotes[key] || {};
     existing.hidden = newHidden;
     symbolNotes[key] = existing;
     symbolDetailBackdrop.classList.add("hidden");
     renderSymbolsSection(card);
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("処理に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -940,7 +1030,7 @@ let ctxNotes = {};
 let ctxCardId = null;
 let ctxEditId = null;
 
-fetch("/api/context-notes").then(r => r.ok ? r.json() : {}).then(data => {
+zukanVersionReady.then(() => fetch("/api/context-notes")).then(r => r.ok ? r.json() : {}).then(data => {
   ctxNotes = data || {};
   renderCtxList();
 }).catch(() => {
@@ -980,15 +1070,11 @@ function renderCtxList() {
   });
 }
 function ctxPost(payload, failMsg) {
-  return fetch("/api/context-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(Object.assign({ cardId: ctxCardId }, payload))
-  }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(data => {
+  return zukanPost("/api/context-notes", Object.assign({ cardId: ctxCardId }, payload)).then(data => {
     if (data && data.notes) ctxNotes[ctxCardId] = data.notes;
     closeCtxEdit();
     renderCtxList();
-  }).catch(() => alert(failMsg));
+  }).catch(err => { if (!(err && err.zukanStale)) alert(failMsg); });
 }
 document.getElementById("ctxAddBtn").addEventListener("click", () => openCtxEdit(null));
 document.getElementById("ctxCancelBtn").addEventListener("click", closeCtxEdit);
@@ -1009,7 +1095,7 @@ let diamondNotes = {};
 let diamondCardId = null;
 let diamondEditId = null;
 
-fetch("/api/diamond-notes").then(r => r.ok ? r.json() : {}).then(data => {
+zukanVersionReady.then(() => fetch("/api/diamond-notes")).then(r => r.ok ? r.json() : {}).then(data => {
   diamondNotes = data || {};
   renderDiamondList();
 }).catch(() => {
@@ -1048,15 +1134,11 @@ function renderDiamondList() {
   });
 }
 function diamondPost(payload, failMsg) {
-  return fetch("/api/diamond-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(Object.assign({ cardId: diamondCardId }, payload))
-  }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(data => {
+  return zukanPost("/api/diamond-notes", Object.assign({ cardId: diamondCardId }, payload)).then(data => {
     if (data && data.notes) diamondNotes[diamondCardId] = data.notes;
     closeDiamondEdit();
     renderDiamondList();
-  }).catch(() => alert(failMsg));
+  }).catch(err => { if (!(err && err.zukanStale)) alert(failMsg); });
 }
 document.getElementById("diamondAddBtn").addEventListener("click", () => openDiamondEdit(null));
 document.getElementById("diamondCancelBtn").addEventListener("click", closeDiamondEdit);
@@ -1078,7 +1160,7 @@ let cardMemos = {};
 let currentMemoCardId = null;
 let currentMemoEditId = null;
 
-fetch("/api/memos").then(r => r.ok ? r.json() : {}).then(data => {
+zukanVersionReady.then(() => fetch("/api/memos")).then(r => r.ok ? r.json() : {}).then(data => {
   cardMemos = data || {};
 }).catch(() => {
   // オフライン版：ビルド時に焼き込まれたスナップショットを使う
@@ -1138,16 +1220,13 @@ document.getElementById("memoSaveBtn").addEventListener("click", () => {
   const title = document.getElementById("memoTitleInput").value.trim();
   const text = document.getElementById("memoTextInput").value.trim();
   if (!title || !text) return;
-  fetch("/api/memos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cardId: currentMemoCardId, id: currentMemoEditId, title, text })
-  }).then(r => r.json()).then(data => {
+  zukanPost("/api/memos", { cardId: currentMemoCardId, id: currentMemoEditId, title, text }).then(data => {
     if (data && data.memos) cardMemos[currentMemoCardId] = data.memos;
     document.getElementById("memoEditView").classList.remove("show");
     document.getElementById("memoListView").style.display = "block";
     renderMemoList();
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -1158,16 +1237,13 @@ document.getElementById("memoCancelBtn").addEventListener("click", () => {
 document.getElementById("memoDeleteBtn").addEventListener("click", () => {
   if (!currentMemoEditId) return;
   if (!confirm("このメモを削除しますか？")) return;
-  fetch("/api/memos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cardId: currentMemoCardId, id: currentMemoEditId, delete: true })
-  }).then(r => r.json()).then(data => {
+  zukanPost("/api/memos", { cardId: currentMemoCardId, id: currentMemoEditId, delete: true }).then(data => {
     if (data && data.memos) cardMemos[currentMemoCardId] = data.memos;
     document.getElementById("memoEditView").classList.remove("show");
     document.getElementById("memoListView").style.display = "block";
     renderMemoList();
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("削除に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -1228,11 +1304,7 @@ document.getElementById("kwEditSaveBtn").addEventListener("click", () => {
     return;
   }
   const key = card.id + ":keywords";
-  fetch("/api/symbol-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: key, text: JSON.stringify(kwEditWorkingList) })
-  }).then(r => r.json()).then(() => {
+  zukanPost("/api/symbol-notes", { key: key, text: JSON.stringify(kwEditWorkingList) }).then(() => {
     symbolNotes[key] = { text: JSON.stringify(kwEditWorkingList) };
     renderKeywords(card);
     const savedEl = document.getElementById("kwEditSaved");
@@ -1241,7 +1313,8 @@ document.getElementById("kwEditSaveBtn").addEventListener("click", () => {
       savedEl.classList.remove("show");
       kwEditBackdrop.classList.add("hidden");
     }, 900);
-  }).catch(() => {
+  }).catch(err => {
+    if (err && err.zukanStale) return;
     alert("保存に失敗しました。通信状態を確認してもう一度お試しください。");
   });
 });
@@ -1886,7 +1959,7 @@ function escHtml(s) {
 let courseStore = { courses: {}, order: [] };
 const IS_OFFLINE_FILE = location.protocol === "file:";
 
-fetch("/api/courses").then(r => r.ok ? r.json() : null).then(data => {
+zukanVersionReady.then(() => fetch("/api/courses")).then(r => r.ok ? r.json() : null).then(data => {
   if (data) courseStore = { courses: data.courses || {}, order: data.order || [] };
   renderCourseList();
 }).catch(() => {
@@ -1925,7 +1998,7 @@ function renderCourseList() {
 
 // ---- 講座のプログラム行ごとのMEMO（ラベルを押すと開く。保存先はKV） ----
 let courseRowMemos = {};
-fetch("/api/course-row-memos").then(r => r.ok ? r.json() : {}).then(d => {
+zukanVersionReady.then(() => fetch("/api/course-row-memos")).then(r => r.ok ? r.json() : {}).then(d => {
   courseRowMemos = d || {};
   document.querySelectorAll(".course-program-item").forEach(r => r._refreshMemo && r._refreshMemo());
 }).catch(() => { if (window.OFFLINE_COURSE_ROW_MEMOS) courseRowMemos = window.OFFLINE_COURSE_ROW_MEMOS; });
@@ -1947,15 +2020,12 @@ function setupRowMemo(row, courseId, idx) {
   });
   area.querySelector(".close").addEventListener("click", () => { area.classList.remove("show"); tag.classList.remove("open"); });
   area.querySelector(".save").addEventListener("click", () => {
-    fetch("/api/course-row-memos", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, idx, text: ta.value })
-    }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(d => {
+    zukanPost("/api/course-row-memos", { courseId, idx, text: ta.value }).then(d => {
       courseRowMemos = d.memos || {};
       row._refreshMemo();
       saved.textContent = "保存しました";
       setTimeout(() => { saved.textContent = ""; }, 2000);
-    }).catch(() => alert("保存に失敗しました。通信状態を確認してもう一度お試しください。"));
+    }).catch(err => { if (!(err && err.zukanStale)) alert("保存に失敗しました。通信状態を確認してもう一度お試しください。"); });
   });
 }
 
@@ -2147,15 +2217,11 @@ function collectCourseFromForm() {
 }
 
 function coursePost(payload, failMsg) {
-  return fetch("/api/courses", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).then(r => { if (!r.ok) throw new Error("save"); return r.json(); }).then(data => {
+  return zukanPost("/api/courses", payload).then(data => {
     if (!data || !data.ok) throw new Error("save");
     courseStore = { courses: data.courses || {}, order: data.order || [] };
     return true;
-  }).catch(() => { alert(failMsg); return false; });
+  }).catch(err => { if (!(err && err.zukanStale)) alert(failMsg); return false; });
 }
 
 document.getElementById("courseNewBtn").addEventListener("click", () => openCourseEdit(null));

@@ -2,6 +2,11 @@
 // タイトル別に複数のメモを1枚のカードに紐付けて保存できるようにする。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "card-memos" のJSONオブジェクトとして
 // { "m01": [ {"id":"...", "title":"恋愛リーディング用", "text":"..."} , ... ], "m02": [...] } の形でまとめて保存する。
+//
+// 保存の直前に「他の端末で先に更新されていないか」を確認する(functions/api/_version-guard.js)。
+// 古い画面からの保存はここで409を返して止める。
+
+import { checkStaleVersion, bumpVersion } from "./_version-guard.js";
 
 function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -25,6 +30,13 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    const staleCheck = await checkStaleVersion(env, request);
+    if (staleCheck.conflict) {
+      return new Response(JSON.stringify({ ok: false, error: "stale", v: staleCheck.current }), {
+        status: 409,
+        headers: { "Content-Type": "application/json; charset=utf-8" }
+      });
+    }
     const body = await request.json();
     const cardId = (body && body.cardId || "").toString();
     const title = (body && body.title || "").toString();
@@ -67,8 +79,9 @@ export async function onRequestPost(context) {
     }
 
     await env.TAROT_KV.put("card-memos", JSON.stringify(data));
+    const newVersion = await bumpVersion(env);
     return new Response(JSON.stringify({ ok: true, memos: data[cardId] }), {
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: { "Content-Type": "application/json; charset=utf-8", "X-Zukan-Version": newVersion }
     });
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {

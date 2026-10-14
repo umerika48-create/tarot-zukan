@@ -1,6 +1,11 @@
 // 講座のプログラム行ごとの「MEMO」用API。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "course-row-memos" のJSONオブジェクトとして
 // { "<講座id>": { "0": "メモ本文", "3": "..." } } の形（行の番号は0始まり）でまとめて保存する。
+//
+// 保存の直前に「他の端末で先に更新されていないか」を確認する(functions/api/_version-guard.js)。
+// 古い画面からの保存はここで409を返して止める。
+
+import { checkStaleVersion, bumpVersion } from "./_version-guard.js";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -22,6 +27,12 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    const staleCheck = await checkStaleVersion(env, request);
+    if (staleCheck.conflict) {
+      return new Response(JSON.stringify({ ok: false, error: "stale", v: staleCheck.current }), {
+        status: 409, headers: JSON_HEADERS
+      });
+    }
     const body = await request.json();
     const courseId = String((body && body.courseId) || "");
     const idx = Number(body && body.idx);
@@ -35,7 +46,10 @@ export async function onRequestPost(context) {
     else delete data[courseId][String(idx)];
     if (!Object.keys(data[courseId]).length) delete data[courseId];
     await env.TAROT_KV.put("course-row-memos", JSON.stringify(data));
-    return new Response(JSON.stringify({ ok: true, memos: data }), { headers: JSON_HEADERS });
+    const newVersion = await bumpVersion(env);
+    return new Response(JSON.stringify({ ok: true, memos: data }), {
+      headers: { ...JSON_HEADERS, "X-Zukan-Version": newVersion }
+    });
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: JSON_HEADERS });
   }
