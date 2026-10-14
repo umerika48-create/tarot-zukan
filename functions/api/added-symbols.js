@@ -1,6 +1,11 @@
 // ストーリーポップアップのシンボルラベル一覧に、後から追加できるラベル用API。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "added-symbols" のJSONオブジェクトとして
 // { "m01": [ {"id":"...", "label":"短いラベル", "title":"詳細タイトル", "text":"説明文"} , ... ], "m02": [...] } の形でまとめて保存する。
+//
+// 保存の直前に「他の端末で先に更新されていないか」を確認する(functions/api/_version-guard.js)。
+// 古い画面からの保存はここで409を返して止める。
+
+import { checkStaleVersion, bumpVersion } from "./_version-guard.js";
 
 function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -24,6 +29,13 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    const staleCheck = await checkStaleVersion(env, request);
+    if (staleCheck.conflict) {
+      return new Response(JSON.stringify({ ok: false, error: "stale", v: staleCheck.current }), {
+        status: 409,
+        headers: { "Content-Type": "application/json; charset=utf-8" }
+      });
+    }
     const body = await request.json();
     const cardId = (body && body.cardId || "").toString();
     const label = (body && body.label || "").toString();
@@ -68,8 +80,9 @@ export async function onRequestPost(context) {
     }
 
     await env.TAROT_KV.put("added-symbols", JSON.stringify(data));
+    const newVersion = await bumpVersion(env);
     return new Response(JSON.stringify({ ok: true, symbols: data[cardId] }), {
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: { "Content-Type": "application/json; charset=utf-8", "X-Zukan-Version": newVersion }
     });
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {

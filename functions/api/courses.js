@@ -5,6 +5,11 @@
 // の形でまとめて保存する。
 // courses.js に直書きされている初期講座を編集した場合も、同じidで上書きとしてここに保存する
 // （その講座を削除すると、上書きが消えて初期内容に戻る）。
+//
+// 保存の直前に「他の端末で先に更新されていないか」を確認する(functions/api/_version-guard.js)。
+// 古い画面からの保存はここで409を返して止める。
+
+import { checkStaleVersion, bumpVersion } from "./_version-guard.js";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -60,6 +65,12 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    const staleCheck = await checkStaleVersion(env, request);
+    if (staleCheck.conflict) {
+      return new Response(JSON.stringify({ ok: false, error: "stale", v: staleCheck.current }), {
+        status: 409, headers: JSON_HEADERS
+      });
+    }
     const body = await request.json();
     const data = await loadData(env);
 
@@ -81,7 +92,10 @@ export async function onRequestPost(context) {
     }
 
     await env.TAROT_KV.put("courses-data", JSON.stringify(data));
-    return new Response(JSON.stringify({ ok: true, courses: data.courses, order: data.order }), { headers: JSON_HEADERS });
+    const newVersion = await bumpVersion(env);
+    return new Response(JSON.stringify({ ok: true, courses: data.courses, order: data.order }), {
+      headers: { ...JSON_HEADERS, "X-Zukan-Version": newVersion }
+    });
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: JSON_HEADERS });
   }
