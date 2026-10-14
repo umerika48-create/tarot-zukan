@@ -492,6 +492,18 @@
   .jentry-del { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px; align-self:flex-start; }
   .jentry-del:hover { color: var(--rose); }
 
+  .journal-migrate-wrap { max-width:640px; margin-bottom:16px; }
+  .journal-migrate-btn {
+    width:100%; padding:11px; border-radius:12px; cursor:pointer; font-family:inherit;
+    background:none; color:var(--gold); border:1px dashed var(--gold-dim); font-size:13px; font-weight:700;
+  }
+  .journal-migrate-btn:hover { background:var(--surface-hover); border-color:var(--gold); }
+  .journal-migrate-btn:disabled { opacity:.6; cursor:default; }
+  .journal-load-error {
+    display:none; max-width:640px; margin-bottom:16px; padding:12px 14px; border-radius:12px;
+    background:var(--rose-dim); border:1px solid var(--rose); color:var(--text); font-size:13px; line-height:1.6;
+  }
+
   /* 時期読み */
   .timing-sec { max-width: 980px; margin-bottom: 34px; }
   .timing-h { font-family:'Kosugi Maru',sans-serif; font-size:16px; margin-bottom:12px; color:var(--gold); }
@@ -1012,6 +1024,10 @@
 
     <!-- 記録 VIEW -->
     <div class="view hidden" id="view-journal">
+      <div class="journal-load-error" id="journalLoadError">読み込めませんでした。通信を確認してください。</div>
+      <div class="journal-migrate-wrap" id="journalMigrateWrap">
+        <button type="button" class="journal-migrate-btn" id="journalMigrateBtn">この端末の記録・メモをクラウドに送る</button>
+      </div>
       <div class="journal-tab-row">
         <button type="button" class="journal-tab active" id="journalTabDraws">占い記録</button>
         <button type="button" class="journal-tab" id="journalTabMemos">メモ</button>
