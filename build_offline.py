@@ -45,6 +45,7 @@ JS_FILES = [
     ("heart_oracle_cards.js", "HEART_ORACLE_CARDS"),
     ("step_oracle_cards.js", "STEP_ORACLE_CARDS"),
     ("answer_oracle_cards.js", "ANSWER_ORACLE_CARDS"),
+    ("root_oracle_cards.js", "ROOT_ORACLE_CARDS"),
 ]
 NON_DATA_JS_FILES = ["spreads.js", "courses.js", "timing.js", "app.js"]
 

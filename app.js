@@ -219,6 +219,7 @@ function getDictDeckArray() {
   if (currentDictDeck === "heart_oracle") return HEART_ORACLE_CARDS;
   if (currentDictDeck === "step_oracle") return STEP_ORACLE_CARDS;
   if (currentDictDeck === "answer_oracle") return ANSWER_ORACLE_CARDS;
+  if (currentDictDeck === "root_oracle") return ROOT_ORACLE_CARDS;
   return CARDS;
 }
 
@@ -262,6 +263,7 @@ function cardNumLabel(c) {
   if (c.deck === "heart_oracle") return "HEART ORACLE " + c.id.replace("h","").padStart(2,"0");
   if (c.deck === "step_oracle") return "STEP ORACLE " + c.id.replace("s","").padStart(2,"0");
   if (c.deck === "answer_oracle") return "ANSWER ORACLE " + c.id.replace("a","").padStart(2,"0");
+  if (c.deck === "root_oracle") return "ROOT ORACLE " + c.id.replace("rt","").padStart(2,"0");
   const prefix = c.deck === "marseille" ? "MARSEILLE " : "";
   if (c.arcana === "major") return prefix + "MAJOR " + String(c.number).padStart(2, "0");
   return prefix + SUIT_LABEL[c.arcana] + " " + rankLabel(c.number);
@@ -415,6 +417,25 @@ function renderSymbolsSection(c, keepDetailOpen) {
   renderAddedChips(c);
   document.getElementById("modalImgFrame").addEventListener("click", hideHotspotLabel);
 }
+// 【❖】と【Context】の中身を、開いたカードに合わせて整える（全デッキ共通）
+function setupDiamondAndContext(c) {
+  diamondCardId = c.id;
+  closeDiamondEdit();
+  renderDiamondList();
+
+  [["mConnPrev", "connections.prev", "＋ 前のカードとのつながりを追加"],
+   ["mConnNext", "connections.next", "＋ 次のカードとのつながりを追加"],
+   ["mConnContrast", "connections.contrast", "＋ 対比を追加"]].forEach(([id, path, hint]) => {
+    const el = document.getElementById(id);
+    const text = getFieldOverride(c, path);
+    el.textContent = text || hint;
+    el.classList.toggle("conn-empty", !text);
+    el.style.display = (!text && location.protocol === "file:") ? "none" : ""; // オフライン版は入力できないので空の項目は隠す
+  });
+  ctxCardId = c.id;
+  closeCtxEdit();
+  renderCtxList();
+}
 function openModal(c) {
   currentModalIndex = currentGridList.findIndex(x => x.id === c.id);
   updateNavButtons();
@@ -431,23 +452,25 @@ function openModal(c) {
   resetAccordions();
   resetTapEdits();
 
-  if (c.deck === "lenormand" || c.deck === "rune" || c.deck === "heart_oracle" || c.deck === "step_oracle" || c.deck === "answer_oracle") {
+  if (c.deck === "lenormand" || c.deck === "rune" || c.deck === "heart_oracle" || c.deck === "step_oracle" || c.deck === "answer_oracle" || c.deck === "root_oracle") {
     document.getElementById("mEyebrow").textContent =
       c.deck === "lenormand" ? "ルノルマン" :
       c.deck === "rune" ? "ルーン（エルダー・フサルク）" :
       c.deck === "step_oracle" ? "Sakuraco Step Oracle" :
-      c.deck === "answer_oracle" ? "Sakuraco Answer Oracle" : "Sakuraco Heart Oracle";
+      c.deck === "answer_oracle" ? "Sakuraco Answer Oracle" :
+      c.deck === "root_oracle" ? "Sakuraco Root Oracle" : "Sakuraco Heart Oracle";
     document.getElementById("mCatchWrap").style.display = "none";
-    document.getElementById("mTagRow").style.display = "none";
-    document.getElementById("mStoryPopup").classList.remove("show");
-    document.getElementById("mPersonPopup").classList.remove("show");
-    document.getElementById("mSituationPopup").classList.remove("show");
-    document.getElementById("mPlacePopup").classList.remove("show");
+    closeAllPopups();
+    document.getElementById("mTagRow").style.display = "flex";
+    ["mAge","mPersonTag","mStoryTag","mSituationTag","mPlaceTag","mMnemonicTag"].forEach(id => { document.getElementById(id).style.display = "none"; });
+    document.getElementById("mDiamondTag").style.display = "inline-block";
+    document.getElementById("mConnTag").style.display = "inline-block";
+    setupDiamondAndContext(c);
     document.getElementById("mUpLabel").textContent = "意味";
     document.getElementById("mUp").textContent = getFieldOverride(c, "meaning");
     document.getElementById("mRvSec").style.display = "none";
     document.getElementById("mLoveSec").style.display = "block";
-    document.getElementById("mLoveLabel").textContent = c.deck === "step_oracle" ? "後押しのひとこと" : c.deck === "heart_oracle" ? "今のアプローチ" : c.deck === "answer_oracle" ? "見極めのひとこと" : "恋愛での視点";
+    document.getElementById("mLoveLabel").textContent = c.deck === "step_oracle" ? "後押しのひとこと" : c.deck === "heart_oracle" ? "今のアプローチ" : c.deck === "answer_oracle" ? "見極めのひとこと" : c.deck === "root_oracle" ? "自分への問いかけ" : "恋愛での視点";
     document.getElementById("mLove").textContent = getFieldOverride(c, "love");
     document.getElementById("mWorkSec").style.display = "none";
     modalBackdrop.classList.remove("hidden");
@@ -507,22 +530,7 @@ function openModal(c) {
   document.getElementById("mPlaceTag").style.display = c.place ? "inline-block" : "none";
   document.getElementById("mConnTag").style.display = "inline-block"; // 【Context】は全カードで入力できる
   document.getElementById("mMnemonicTag").style.display = c.mnemonic ? "inline-block" : "none";
-  diamondCardId = c.id;
-  closeDiamondEdit();
-  renderDiamondList();
-
-  [["mConnPrev", "connections.prev", "＋ 前のカードとのつながりを追加"],
-   ["mConnNext", "connections.next", "＋ 次のカードとのつながりを追加"],
-   ["mConnContrast", "connections.contrast", "＋ 対比を追加"]].forEach(([id, path, hint]) => {
-    const el = document.getElementById(id);
-    const text = getFieldOverride(c, path);
-    el.textContent = text || hint;
-    el.classList.toggle("conn-empty", !text);
-    el.style.display = (!text && location.protocol === "file:") ? "none" : ""; // オフライン版は入力できないので空の項目は隠す
-  });
-  ctxCardId = c.id;
-  closeCtxEdit();
-  renderCtxList();
+  setupDiamondAndContext(c);
   if (c.mnemonic) {
     document.getElementById("mMnemonicText").textContent = getFieldOverride(c, "mnemonic");
   }
@@ -779,7 +787,7 @@ function resetTapEdits() {
     document.getElementById(pId).style.display = "";
   });
 }
-const SIMPLE_DECKS = ["lenormand", "rune", "heart_oracle", "step_oracle", "answer_oracle"];
+const SIMPLE_DECKS = ["lenormand", "rune", "heart_oracle", "step_oracle", "answer_oracle", "root_oracle"];
 setupTapEdit("mSituationText", "situationEditArea", "situationEditTextarea", "situationEditSaveBtn", "situationEditCancelBtn", "situationEditSaved", "current_situation");
 setupTapEdit("mPlaceText", "placeEditArea", "placeEditTextarea", "placeEditSaveBtn", "placeEditCancelBtn", "placeEditSaved", "place");
 setupTapEdit("mStoryText", "storyEditArea", "storyEditTextarea", "storyEditSaveBtn", "storyEditCancelBtn", "storyEditSaved", "story");
@@ -1331,7 +1339,7 @@ document.querySelectorAll("#deckRow .chip").forEach(chip => {
     currentDeck = chip.dataset.deck;
 
     const timingChip = document.querySelector('#drawModeRow .chip[data-mode="timing"]');
-    if (currentDeck === "lenormand" || currentDeck === "rune" || currentDeck === "marseille" || currentDeck === "heart_oracle" || currentDeck === "step_oracle" || currentDeck === "answer_oracle") {
+    if (currentDeck === "lenormand" || currentDeck === "rune" || currentDeck === "marseille" || currentDeck === "heart_oracle" || currentDeck === "step_oracle" || currentDeck === "answer_oracle" || currentDeck === "root_oracle") {
       timingChip.style.display = "none";
       if (drawMode === "timing") {
         drawMode = "reading";
@@ -1343,7 +1351,8 @@ document.querySelectorAll("#deckRow .chip").forEach(chip => {
         currentDeck === "marseille" ? "今日のあなたへの1枚（マルセイユ版）" :
         currentDeck === "heart_oracle" ? "今日のあなたへの1枚（Heart Oracle）" :
         currentDeck === "step_oracle" ? "今日のあなたへの1枚（Step Oracle）" :
-        currentDeck === "answer_oracle" ? "今日のあなたへの1枚（Answer Oracle）" : "今日のあなたへの1枚（ルーン）";
+        currentDeck === "answer_oracle" ? "今日のあなたへの1枚（Answer Oracle）" :
+        currentDeck === "root_oracle" ? "今日のあなたへの1枚（Root Oracle）" : "今日のあなたへの1枚（ルーン）";
       document.getElementById("drawSub").textContent = "静かに一呼吸してから、カードをタップしてください。";
     } else {
       timingChip.style.display = "inline-block";
@@ -1390,8 +1399,8 @@ document.getElementById("deckBack").addEventListener("click", function () {
 
     const rc = document.getElementById("resultCard");
 
-    if (currentDeck === "heart_oracle" || currentDeck === "step_oracle" || currentDeck === "answer_oracle") {
-      const source = currentDeck === "heart_oracle" ? HEART_ORACLE_CARDS : currentDeck === "step_oracle" ? STEP_ORACLE_CARDS : ANSWER_ORACLE_CARDS;
+    if (currentDeck === "heart_oracle" || currentDeck === "step_oracle" || currentDeck === "answer_oracle" || currentDeck === "root_oracle") {
+      const source = currentDeck === "heart_oracle" ? HEART_ORACLE_CARDS : currentDeck === "step_oracle" ? STEP_ORACLE_CARDS : currentDeck === "root_oracle" ? ROOT_ORACLE_CARDS : ANSWER_ORACLE_CARDS;
       drawnCard = source[Math.floor(Math.random() * source.length)];
       drawnReversed = false;
 
@@ -1401,11 +1410,11 @@ document.getElementById("deckBack").addEventListener("click", function () {
       document.getElementById("resultOrient").textContent = "";
       document.getElementById("resultOrient").className = "result-orient up";
 
-      document.getElementById("rEyebrow").textContent = currentDeck === "heart_oracle" ? "Sakuraco Heart Oracle" : currentDeck === "step_oracle" ? "Sakuraco Step Oracle" : "Sakuraco Answer Oracle";
+      document.getElementById("rEyebrow").textContent = currentDeck === "heart_oracle" ? "Sakuraco Heart Oracle" : currentDeck === "step_oracle" ? "Sakuraco Step Oracle" : currentDeck === "root_oracle" ? "Sakuraco Root Oracle" : "Sakuraco Answer Oracle";
       document.getElementById("rTitle").textContent = drawnCard.name_jp;
       document.getElementById("rMeaningSec").style.display = "block";
       document.getElementById("rLoveSec").style.display = "block";
-      document.getElementById("rLoveLabel").textContent = currentDeck === "step_oracle" ? "後押しのひとこと" : currentDeck === "heart_oracle" ? "今のアプローチ" : currentDeck === "answer_oracle" ? "見極めのひとこと" : "恋愛での視点";
+      document.getElementById("rLoveLabel").textContent = currentDeck === "step_oracle" ? "後押しのひとこと" : currentDeck === "heart_oracle" ? "今のアプローチ" : currentDeck === "answer_oracle" ? "見極めのひとこと" : currentDeck === "root_oracle" ? "自分への問いかけ" : "恋愛での視点";
       const hasTiming = currentDeck === "heart_oracle";
       document.getElementById("rTimingTermSec").style.display = hasTiming ? "block" : "none";
       document.getElementById("rTimingFeatureSec").style.display = hasTiming ? "block" : "none";
@@ -1547,6 +1556,7 @@ function findCard(id, deck) {
   if (deck === "heart_oracle") return HEART_ORACLE_CARDS.find(c => c.id === id);
   if (deck === "step_oracle") return STEP_ORACLE_CARDS.find(c => c.id === id);
   if (deck === "answer_oracle") return ANSWER_ORACLE_CARDS.find(c => c.id === id);
+  if (deck === "root_oracle") return ROOT_ORACLE_CARDS.find(c => c.id === id);
   return CARDS.find(c => c.id === id);
 }
 
@@ -1614,6 +1624,7 @@ function spreadDeckArray(deck) {
   if (deck === "heart_oracle") return HEART_ORACLE_CARDS;
   if (deck === "step_oracle") return STEP_ORACLE_CARDS;
   if (deck === "answer_oracle") return ANSWER_ORACLE_CARDS;
+  if (deck === "root_oracle") return ROOT_ORACLE_CARDS;
   return CARDS;
 }
 function spreadCardMeaning(card) {
@@ -1886,7 +1897,7 @@ function drawOneFrom(deck) {
   const arr = spreadDeckArray(deck);
   return arr[Math.floor(Math.random() * arr.length)];
 }
-const DECK_LABEL = { tarot: "タロット（RWS）", marseille: "タロット（マルセイユ）", lenormand: "ルノルマン", rune: "ルーン", heart_oracle: "Heart Oracle", step_oracle: "Step Oracle", answer_oracle: "Answer Oracle" };
+const DECK_LABEL = { tarot: "タロット（RWS）", marseille: "タロット（マルセイユ）", lenormand: "ルノルマン", rune: "ルーン", heart_oracle: "Heart Oracle", step_oracle: "Step Oracle", answer_oracle: "Answer Oracle", root_oracle: "Root Oracle" };
 
 function renderComboCard(deck, card) {
   const wrap = document.createElement("div");
