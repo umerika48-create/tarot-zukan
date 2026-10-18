@@ -1751,10 +1751,18 @@ function renderSpreadBoard() {
       maxY = Math.max(maxY, top + SLOT_H);
     }
     if (layout === "hexagram") {
+      // 1過去(真上) 2現在(右下) 3未来(左下) ＝上向き△ ／ 4対策(真下) 5相手(左上) 6自分(右上) ＝下向き▽ ／ 7結果(中央)
       const R = 292, cx = 400, cy = 400;
-      const angle = (i * 60 - 90) * Math.PI / 180;
-      const left = cx + R * Math.cos(angle) - 65;
-      const top = cy + R * Math.sin(angle) - 100;
+      const STAR_POS = [0, 2, 4, 3, 5, 1]; // 位置番号 → 星の頂点（0=真上から時計回りに60°刻み）
+      let left, top;
+      if (i === 6) {
+        left = cx - 65;
+        top = cy - 100;
+      } else {
+        const angle = (STAR_POS[i] * 60 - 90) * Math.PI / 180;
+        left = cx + R * Math.cos(angle) - 65;
+        top = cy + R * Math.sin(angle) - 100;
+      }
       slot.style.left = left + "px";
       slot.style.top = top + "px";
       maxX = Math.max(maxX, left + SLOT_W);
