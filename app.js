@@ -1677,6 +1677,8 @@ function resetSpreadBoard() {
   const board = document.getElementById("spreadBoard");
   board.innerHTML = "";
   board.className = "spread-board";
+  const lg = document.getElementById("spreadLegend");
+  if (lg) lg.innerHTML = "";
 }
 
 document.getElementById("spreadDealBtn").addEventListener("click", () => {
@@ -1719,7 +1721,8 @@ function renderSpreadBoard() {
 
   const positions = currentSpread.positions;
   const n = positions.length;
-  const SLOT_W = 150, SLOT_H = 290; // カード本体＋ラベル・名前分の余裕を含む概算サイズ
+  const SLOT_W = layout === "celtic" ? 140 : 150;
+  const SLOT_H = layout === "celtic" ? 230 : 290; // カード本体＋ラベル・名前分の余裕を含む概算サイズ
   let maxX = 0, maxY = 0;
 
   positions.forEach((pos, i) => {
@@ -1728,15 +1731,16 @@ function renderSpreadBoard() {
     slot.className = "spread-slot";
 
     if (layout === "celtic") {
+      // 中央の十字（1現状・2障害・3顕在意識・4潜在意識・5過去・6近い未来）＋右の縦列（7〜10を下から上へ）
       const coords = [
-        {x:383,y:300},{x:383,y:300,rot:1},{x:383,y:67},{x:383,y:533},
-        {x:117,y:300},{x:650,y:300},
-        {x:867,y:650},{x:867,y:450},{x:867,y:250},{x:867,y:50}
+        {x:190,y:345},{x:190,y:345,cross:1},{x:190,y:115},{x:190,y:575},
+        {x:0,y:345},{x:380,y:345},
+        {x:570,y:690},{x:570,y:460},{x:570,y:230},{x:570,y:0}
       ];
       const c = coords[i] || {x:0,y:0};
       slot.style.left = c.x + "px";
       slot.style.top = c.y + "px";
-      if (c.rot) slot.style.transform = "rotate(90deg)";
+      if (c.cross) slot.classList.add("celtic-cross");
       maxX = Math.max(maxX, c.x + SLOT_W);
       maxY = Math.max(maxY, c.y + SLOT_H);
     }
@@ -1784,6 +1788,12 @@ function renderSpreadBoard() {
     } else {
       cardBox.textContent = "?";
     }
+    if (layout === "celtic" && i === 1) {
+      const badge = document.createElement("div");
+      badge.className = "celtic-badge";
+      badge.textContent = "2 " + pos.label;
+      cardBox.appendChild(badge);
+    }
     slot.appendChild(cardBox);
 
     if (n <= 12) {
@@ -1801,6 +1811,44 @@ function renderSpreadBoard() {
   });
 
   fitAbsoluteLayoutToScreen(board, layout, maxX, maxY);
+  renderSpreadLegend(layout, positions);
+}
+
+// 固定座標レイアウトは重なりや縮小で文字が読みにくいため、位置の意味を一覧でも表示する
+function renderSpreadLegend(layout, positions) {
+  const lg = document.getElementById("spreadLegend");
+  if (!lg) return;
+  lg.innerHTML = "";
+  if (!(layout === "celtic" || layout === "hexagram" || layout === "horoscope")) return;
+  positions.forEach((pos, i) => {
+    const card = spreadDrawnCards[i];
+    const row = document.createElement("div");
+    row.className = "lg-row";
+    const no = document.createElement("div");
+    no.className = "lg-no";
+    no.textContent = i + 1;
+    const body = document.createElement("div");
+    const head = document.createElement("div");
+    const l = document.createElement("span");
+    l.className = "lg-label";
+    l.textContent = pos.label;
+    head.appendChild(l);
+    if (card) {
+      const n = document.createElement("span");
+      n.className = "lg-card";
+      n.textContent = spreadCardName(card);
+      head.appendChild(n);
+    }
+    const d = document.createElement("div");
+    d.className = "lg-desc";
+    d.textContent = pos.desc;
+    body.appendChild(head);
+    body.appendChild(d);
+    row.appendChild(no);
+    row.appendChild(body);
+    if (card) row.addEventListener("click", () => openSpreadDetail(pos, card, i + 1));
+    lg.appendChild(row);
+  });
 }
 
 function fitAbsoluteLayoutToScreen(board, layout, naturalW, naturalH) {

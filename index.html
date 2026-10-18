@@ -553,8 +553,30 @@
 
   .layout-flow { display:flex; flex-wrap:wrap; gap:28px 22px; }
 
-  .layout-celtic { position:relative; width:100%; max-width:930px; height:865px; }
-  .layout-celtic .spread-slot { position:absolute; }
+  .layout-celtic { position:relative; width:100%; max-width:710px; height:920px; margin:0 auto; }
+  .layout-celtic .spread-slot { position:absolute; width:140px; }
+  .layout-celtic .slot-card { width:100px; }
+  .layout-celtic .slot-name { max-width:140px; }
+  /* 2枚目(障害)は1枚目に横向きに重ねる。文字は回転させず、カードだけ回す */
+  .layout-celtic .celtic-cross .slot-card { transform: rotate(90deg); position:relative; overflow:visible; }
+  .layout-celtic .celtic-cross .slot-card img { border-radius:10px; }
+  .layout-celtic .celtic-cross:hover .slot-card { transform: rotate(90deg) translateY(-3px); }
+  .layout-celtic .celtic-cross .slot-label, .layout-celtic .celtic-cross .slot-name { visibility:hidden; }
+  .celtic-badge {
+    position:absolute; top:50%; left:50%; transform: translate(-50%,-50%) rotate(-90deg);
+    background: rgba(18,17,24,.88); color: var(--gold); border:1px solid var(--gold-dim);
+    font-family:'DM Mono',monospace; font-size:12px; padding:2px 8px; border-radius:10px; white-space:nowrap;
+  }
+  /* 位置と意味の一覧（固定座標レイアウトの下に表示） */
+  .spread-legend { margin-top:22px; max-width:640px; margin-left:auto; margin-right:auto; display:flex; flex-direction:column; gap:8px; }
+  .spread-legend .lg-row {
+    display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border-radius:10px;
+    background: var(--surface); border:1px solid var(--border); cursor:pointer;
+  }
+  .spread-legend .lg-no { font-family:'DM Mono',monospace; color:var(--gold); font-size:14px; min-width:22px; }
+  .spread-legend .lg-label { color:var(--gold); font-size:14px; font-weight:700; }
+  .spread-legend .lg-card { color:var(--text); font-size:14px; margin-left:8px; }
+  .spread-legend .lg-desc { color:var(--text-dim); font-size:12.5px; line-height:1.6; margin-top:3px; }
   .layout-grid3 { display:grid; grid-template-columns: repeat(3, 130px); gap:22px; justify-content:start; }
   .layout-grand { display:grid; grid-template-columns: repeat(9, 56px); gap:7px; }
   .layout-grand .slot-card { width:56px; }
@@ -923,6 +945,7 @@
         <button class="btn" id="spreadResetBtn">リセット</button>
       </div>
       <div class="spread-board" id="spreadBoard" style="margin-top:22px;"></div>
+      <div class="spread-legend" id="spreadLegend"></div>
     </div>
 
     <!-- 組み合わせ引き VIEW -->
