@@ -122,7 +122,7 @@ if (!ZUKAN_IS_OFFLINE_FILE) {
 }
 
 // ---------- ナビゲーション ----------
-const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), courses: document.getElementById("view-courses"), journal: document.getElementById("view-journal") };
+const views = { dict: document.getElementById("view-dict"), draw: document.getElementById("view-draw"), timing: document.getElementById("view-timing"), spread: document.getElementById("view-spread"), combo: document.getElementById("view-combo"), about: document.getElementById("view-about"), courses: document.getElementById("view-courses"), journal: document.getElementById("view-journal"), radio: document.getElementById("view-radio") };
 const titles = {
   dict: ["占いカード図鑑", "タロット・ルノルマン・ルーン。いつでも気軽に。"],
   draw: ["1枚引く", "今の自分に必要なメッセージを受け取りましょう。"],
@@ -131,7 +131,8 @@ const titles = {
   combo: ["組み合わせ引き", "複数のデッキを組み合わせて、多角的に読み解きます。"],
   about: ["タロットとは", "カードの成り立ちを、少しだけ覗いてみましょう。"],
   courses: ["講座", "開催する講座の内容とメモを管理できます。"],
-  journal: ["記録", "これまで引いたカードと、そのときの気づき。"]
+  journal: ["記録", "これまで引いたカードと、そのときの気づき。"],
+  radio: ["ラジオ", "stand.fm収録用。絵柄と台本を並べて読めます。"]
 };
 document.querySelectorAll(".rail-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -152,6 +153,131 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
     if (v === "spread") initSpreadTab();
     if (v === "combo") { document.getElementById("comboDeckStage").style.display = "flex"; renderComboDeckStage(); }
     if (v === "courses") renderCourseList();
+    if (v === "radio") initRadio();
+  });
+});
+
+// ---------- ラジオ（stand.fm収録用の台本表示・編集）----------
+// 台本はタロットRWS版78枚（CARDS）に1回ずつ対応。紹介順は CARDS の並び（大アルカナ0〜21→ワンド→カップ→ソード→ペンタクル）。
+// 同梱の初期台本(RADIO_SEED)と、KV(/api/radio-scripts)に保存した編集分をマージして使う（保存分が優先）。
+let radioStore = {};
+let radioIdx = 0;
+let radioLoaded = false;
+function radioText(id) {
+  if (radioStore[id] && typeof radioStore[id].text === "string") return radioStore[id].text;
+  return (typeof RADIO_SEED !== "undefined" && RADIO_SEED[id]) || "";
+}
+function radioLabel(c, i) {
+  const has = radioText(c.id).trim() ? "●" : "○";
+  return `${has} 第${i + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp}`;
+}
+function renderRadioSelect() {
+  const sel = document.getElementById("radioSelect");
+  sel.innerHTML = CARDS.map((c, i) => `<option value="${i}">${escapeHtml(radioLabel(c, i))}</option>`).join("");
+  sel.value = String(radioIdx);
+}
+function renderRadio() {
+  const c = CARDS[radioIdx];
+  document.getElementById("radioSelect").value = String(radioIdx);
+  document.getElementById("radioSide").innerHTML =
+    `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>`;
+  const text = radioText(c.id);
+  const box = document.getElementById("radioScript");
+  if (!text.trim()) {
+    box.innerHTML = '<div class="radio-empty">この回の台本はまだありません。右上の「編集」から、台本を貼り付けて保存できます。</div>';
+    return;
+  }
+  let first = true;
+  box.innerHTML = text.split("\n").map(line => {
+    if (/^##\s/.test(line)) {
+      const h = `<span class="rh${first ? " first" : ""}">${escapeHtml(line.replace(/^##\s*/, ""))}（編集用・読み上げない）</span>`;
+      first = false;
+      return h;
+    }
+    first = false;
+    return escapeHtml(line) + "\n";
+  }).join("").replace(/\n+(?=<span class="rh)/g, "\n");
+  box.classList.toggle("hide-head", document.getElementById("radioHideHead").checked);
+}
+function radioGo(i) {
+  radioIdx = (i + CARDS.length) % CARDS.length;
+  closeRadioEdit();
+  renderRadio();
+  window.scrollTo(0, 0);
+  try { localStorage.setItem("radioIdx", String(radioIdx)); } catch (e) {}
+}
+function openRadioEdit() {
+  const c = CARDS[radioIdx];
+  const ta = document.getElementById("radioText");
+  ta.value = radioText(c.id);
+  document.getElementById("radioScript").style.display = "none";
+  document.getElementById("radioEditWrap").style.display = "block";
+  document.getElementById("radioEditBtn").style.display = "none";
+  document.getElementById("radioReset").style.display = (radioStore[c.id] && typeof RADIO_SEED !== "undefined" && RADIO_SEED[c.id]) ? "" : "none";
+  updateRadioCount();
+  ta.focus();
+}
+function closeRadioEdit() {
+  document.getElementById("radioScript").style.display = "";
+  document.getElementById("radioEditWrap").style.display = "none";
+  document.getElementById("radioEditBtn").style.display = "";
+}
+function updateRadioCount() {
+  const t = document.getElementById("radioText").value.split("\n").filter(l => !/^##\s/.test(l)).join("").replace(/\s/g, "");
+  document.getElementById("radioCount").textContent = "読み上げ部分 約" + t.length + "文字";
+}
+function radioSave(payload) {
+  if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) {
+    alert("オフライン版では台本を保存できません。オンライン版（https://tarot-zukan.pages.dev）で編集してください。");
+    return Promise.resolve(false);
+  }
+  return zukanPost("/api/radio-scripts", payload).then(data => {
+    if (!data || !data.ok) throw new Error("save");
+    radioStore = data.scripts || {};
+    return true;
+  }).catch(err => { if (!(err && err.zukanStale)) alert("保存できませんでした。通信を確認して、もう一度お試しください。"); return false; });
+}
+function initRadio() {
+  if (!radioLoaded) {
+    radioLoaded = true;
+    try { const s = parseInt(localStorage.getItem("radioIdx"), 10); if (s >= 0 && s < CARDS.length) radioIdx = s; } catch (e) {}
+    let savedFont = null;
+    try { savedFont = localStorage.getItem("radioFont"); } catch (e) {}
+    document.getElementById("radioFont").value = savedFont || (window.innerWidth <= 720 ? "22" : "28");
+    applyRadioFont();
+    renderRadioSelect();
+    renderRadio();
+    if (typeof ZUKAN_IS_OFFLINE_FILE === "undefined" || !ZUKAN_IS_OFFLINE_FILE) {
+      zukanVersionReady.then(() => fetch("/api/radio-scripts")).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && typeof d === "object") { radioStore = d; renderRadioSelect(); if (document.getElementById("radioEditWrap").style.display === "none") renderRadio(); }
+      }).catch(() => {});
+    }
+  }
+}
+function applyRadioFont() {
+  document.getElementById("radioScript").style.fontSize = document.getElementById("radioFont").value + "px";
+}
+document.getElementById("radioSelect").addEventListener("change", e => radioGo(parseInt(e.target.value, 10)));
+document.getElementById("radioPrev").addEventListener("click", () => radioGo(radioIdx - 1));
+document.getElementById("radioNext").addEventListener("click", () => radioGo(radioIdx + 1));
+document.getElementById("radioFont").addEventListener("input", () => {
+  applyRadioFont();
+  try { localStorage.setItem("radioFont", document.getElementById("radioFont").value); } catch (e) {}
+});
+document.getElementById("radioHideHead").addEventListener("change", renderRadio);
+document.getElementById("radioEditBtn").addEventListener("click", openRadioEdit);
+document.getElementById("radioCancel").addEventListener("click", closeRadioEdit);
+document.getElementById("radioText").addEventListener("input", updateRadioCount);
+document.getElementById("radioSave").addEventListener("click", () => {
+  const c = CARDS[radioIdx];
+  radioSave({ cardId: c.id, text: document.getElementById("radioText").value }).then(ok => {
+    if (ok) { closeRadioEdit(); renderRadioSelect(); renderRadio(); }
+  });
+});
+document.getElementById("radioReset").addEventListener("click", () => {
+  if (!confirm("保存した編集内容を消して、同梱の初期台本に戻します。よろしいですか？")) return;
+  radioSave({ cardId: CARDS[radioIdx].id, delete: true }).then(ok => {
+    if (ok) { closeRadioEdit(); renderRadioSelect(); renderRadio(); }
   });
 });
 
@@ -2428,12 +2554,12 @@ renderGrid();
     Promise.all([
       get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"),
       get("/api/courses"), get("/api/context-notes"), get("/api/course-row-memos"),
-      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos")
+      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos"), get("/api/radio-scripts")
     ])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos]) => {
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos, radioScripts]) => {
         const backup = {
           symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos,
-          journal, memoFolders, memoNotes, courseMemos,
+          journal, memoFolders, memoNotes, courseMemos, radioScripts,
           exportedAt: new Date().toISOString()
         };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });

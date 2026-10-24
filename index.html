@@ -660,6 +660,34 @@
   .course-memo-status { font-size:11px; color:var(--text-dim); margin-top:6px; height:14px; }
 
 
+  /* ラジオ(収録用台本) */
+  .radio-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px; }
+  .radio-bar select { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-family:inherit; font-size:14px; max-width:100%; }
+  .radio-btn { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-family:inherit; font-size:13px; cursor:pointer; }
+  .radio-btn:hover { background:var(--surface-hover); border-color:var(--gold); }
+  .radio-btn.save { background:var(--gold); color:#1a1722; border-color:var(--gold); font-weight:700; }
+  .radio-sp { flex:1; }
+  .radio-ctl { font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:6px; }
+  .radio-main { display:grid; grid-template-columns: 240px 1fr; gap:22px; align-items:start; }
+  .radio-side { position:sticky; top:8px; text-align:center; }
+  .radio-side img { width:100%; border-radius:10px; border:1px solid var(--border); display:block; }
+  .radio-side .rs-no { font-size:12px; color:var(--text-dim); margin-top:10px; }
+  .radio-side .rs-name { font-size:18px; color:var(--gold); font-weight:700; margin-top:2px; }
+  .radio-side .rs-en { font-size:12px; color:var(--text-dim); }
+  .radio-script { font-size:28px; line-height:1.8; color:var(--text); white-space:pre-wrap; padding:6px 4px 60px; }
+  .radio-script .rh { display:block; font-size:13px; line-height:1.4; color:var(--gold-dim); border-top:1px solid var(--border); margin-top:26px; padding-top:8px; letter-spacing:.04em; }
+  .radio-script .rh.first { margin-top:0; border-top:none; }
+  .radio-script.hide-head .rh { display:none; }
+  .radio-empty { font-size:14px; color:var(--text-dim); line-height:1.8; padding:20px 4px; }
+  .radio-editwrap textarea { width:100%; min-height:60vh; box-sizing:border-box; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:14px; font-family:inherit; font-size:16px; line-height:1.8; resize:vertical; }
+  .radio-editbtns { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
+  .radio-count { font-size:12px; color:var(--text-dim); margin-left:auto; }
+  @media (max-width: 720px) {
+    .radio-main { grid-template-columns: 1fr; }
+    .radio-side { position:static; display:flex; gap:12px; align-items:center; text-align:left; }
+    .radio-side img { width:84px; }
+  }
+
   .course-toolbar { max-width:640px; margin-bottom:14px; }
   .course-new-btn {
     width:100%; padding:11px; border-radius:12px; cursor:pointer; font-family:inherit;
@@ -783,6 +811,7 @@
     <button class="rail-btn" data-view="combo"><span class="ic">&#128260;</span>組み合わせ引き</button>
     <button class="rail-btn" data-view="about"><span class="ic">&#128220;</span>タロットとは</button>
     <button class="rail-btn" data-view="courses"><span class="ic">&#127891;</span>講座</button>
+    <button class="rail-btn" data-view="radio"><span class="ic">&#127911;</span>ラジオ</button>
     <button class="rail-btn" data-view="journal"><span class="ic">&#128221;</span>記録</button>
   </nav>
 
@@ -1051,6 +1080,34 @@
     <div class="view hidden" id="view-courses">
       <div class="course-toolbar" id="courseToolbar"><button type="button" class="course-new-btn" id="courseNewBtn">＋ 講座を新規登録</button></div>
       <div class="course-list" id="courseList"></div>
+    </div>
+
+    <!-- ラジオ(収録用台本) VIEW -->
+    <div class="view hidden" id="view-radio">
+      <div class="radio-bar">
+        <select id="radioSelect" aria-label="回を選ぶ"></select>
+        <button type="button" class="radio-btn" id="radioPrev">‹ 前の回</button>
+        <button type="button" class="radio-btn" id="radioNext">次の回 ›</button>
+        <span class="radio-sp"></span>
+        <label class="radio-ctl">文字 <input type="range" id="radioFont" min="18" max="44" step="2" value="28"></label>
+        <label class="radio-ctl"><input type="checkbox" id="radioHideHead"> 見出しを隠す</label>
+        <button type="button" class="radio-btn" id="radioEditBtn">編集</button>
+      </div>
+      <div class="radio-main">
+        <div class="radio-side" id="radioSide"></div>
+        <div class="radio-body">
+          <div class="radio-script" id="radioScript"></div>
+          <div class="radio-editwrap" id="radioEditWrap" style="display:none;">
+            <textarea id="radioText" spellcheck="false" placeholder="ここに台本を貼り付け／入力します。「## 」で始まる行は編集用の見出し（読み上げない部分）として小さく表示されます。"></textarea>
+            <div class="radio-editbtns">
+              <button type="button" class="radio-btn save" id="radioSave">保存</button>
+              <button type="button" class="radio-btn" id="radioCancel">キャンセル</button>
+              <button type="button" class="radio-btn" id="radioReset" style="display:none;">保存分を消して初期台本に戻す</button>
+              <span class="radio-count" id="radioCount"></span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 記録 VIEW -->
@@ -1489,6 +1546,7 @@
 <script src="root_oracle_cards.js"></script>
 <script src="spreads.js"></script>
 <script src="courses.js"></script>
+<script src="radio_scripts.js"></script>
 <script src="timing.js"></script>
 <script src="app.js"></script>
 </body>
