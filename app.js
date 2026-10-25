@@ -188,18 +188,20 @@ function renderRadio() {
     return;
   }
   let first = true;
-  box.innerHTML = text.split("\n").map(line => {
+  box.innerHTML = text.split("\n").map((line, i) => {
     if (/^##\s/.test(line)) {
-      const h = `<span class="rh${first ? " first" : ""}">${escapeHtml(line.replace(/^##\s*/, ""))}（編集用・読み上げない）</span>`;
+      const h = `<span class="rh rl${first ? " first" : ""}" data-i="${i}">${escapeHtml(line.replace(/^##\s*/, ""))}（編集用・読み上げない）</span>`;
       first = false;
       return h;
     }
     first = false;
-    return escapeHtml(line) + "\n";
+    if (!line.trim()) return "\n";
+    return `<span class="rl" data-i="${i}">${escapeHtml(line)}</span>\n`;
   }).join("").replace(/\n+(?=<span class="rh)/g, "\n");
   box.classList.toggle("hide-head", document.getElementById("radioHideHead").checked);
 }
 function radioGo(i) {
+  radioInlineOpen = false;
   radioIdx = (i + CARDS.length) % CARDS.length;
   closeRadioEdit();
   renderRadio();
@@ -257,6 +259,46 @@ function initRadio() {
 function applyRadioFont() {
   document.getElementById("radioScript").style.fontSize = document.getElementById("radioFont").value + "px";
 }
+
+// 読んでいる途中の修正：行をタップすると、その場で直せる（保存すると元の表示に戻る）
+let radioInlineOpen = false;
+document.getElementById("radioScript").addEventListener("click", e => {
+  if (radioInlineOpen) return;
+  const el = e.target.closest(".rl");
+  if (!el) return;
+  const sel = window.getSelection && window.getSelection().toString();
+  if (sel) return; // 文字を選択しているだけのときは開かない
+  const i = parseInt(el.dataset.i, 10);
+  const c = CARDS[radioIdx];
+  const lines = radioText(c.id).split("\n");
+  if (!(i >= 0 && i < lines.length)) return;
+  radioInlineOpen = true;
+  const wrap = document.createElement("div");
+  wrap.className = "radio-inline";
+  wrap.innerHTML = '<textarea spellcheck="false"></textarea><div class="radio-editbtns"><button type="button" class="radio-btn save">保存</button><button type="button" class="radio-btn" data-act="cancel">キャンセル</button><button type="button" class="radio-btn" data-act="del">この行を削除</button><span class="radio-count">「## 」で始めると見出し（読み上げない部分）</span></div>';
+  const ta = wrap.querySelector("textarea");
+  ta.value = lines[i];
+  el.replaceWith(wrap);
+  const fit = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight + 4) + "px"; };
+  ta.addEventListener("input", fit);
+  fit(); ta.focus();
+  const done = () => { radioInlineOpen = false; };
+  const finish = (newLines) => {
+    const y = window.scrollY;
+    radioSave({ cardId: c.id, text: newLines.join("\n") }).then(ok => {
+      done(); renderRadio(); renderRadioSelect(); window.scrollTo(0, y);
+    });
+  };
+  wrap.querySelector(".save").addEventListener("click", () => {
+    const nl = lines.slice(); nl.splice(i, 1, ...ta.value.split("\n")); finish(nl);
+  });
+  wrap.querySelector('[data-act="del"]').addEventListener("click", () => {
+    const nl = lines.slice(); nl.splice(i, 1); finish(nl);
+  });
+  wrap.querySelector('[data-act="cancel"]').addEventListener("click", () => {
+    const y = window.scrollY; done(); renderRadio(); window.scrollTo(0, y);
+  });
+});
 document.getElementById("radioSelect").addEventListener("change", e => radioGo(parseInt(e.target.value, 10)));
 document.getElementById("radioPrev").addEventListener("click", () => radioGo(radioIdx - 1));
 document.getElementById("radioNext").addEventListener("click", () => radioGo(radioIdx + 1));

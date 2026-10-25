@@ -679,6 +679,11 @@
   .radio-script .rh { display:block; font-size:13px; line-height:1.4; color:var(--gold-dim); border-top:1px solid var(--border); margin-top:26px; padding-top:8px; letter-spacing:.04em; }
   .radio-script .rh.first { margin-top:0; border-top:none; }
   .radio-script.hide-head .rh { display:none; }
+  .radio-script .rl { cursor:text; border-radius:6px; }
+  .radio-script .rl:hover { background:rgba(201,169,97,.08); }
+  .radio-inline { margin:6px 0 14px; }
+  .radio-inline textarea { width:100%; box-sizing:border-box; background:var(--surface); color:var(--text); border:1px solid var(--gold-dim); border-radius:10px; padding:10px 12px; font-family:inherit; font-size:inherit; line-height:1.7; resize:vertical; min-height:3em; }
+  .radio-hint { font-size:12px; color:var(--text-dim); margin:-6px 0 12px; }
   .radio-empty { font-size:14px; color:var(--text-dim); line-height:1.8; padding:20px 4px; }
   .radio-editwrap textarea { width:100%; min-height:60vh; box-sizing:border-box; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:14px; font-family:inherit; font-size:16px; line-height:1.8; resize:vertical; }
   .radio-editbtns { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
@@ -1094,6 +1099,7 @@
         <label class="radio-ctl"><input type="checkbox" id="radioHideHead"> 見出しを隠す</label>
         <button type="button" class="radio-btn" id="radioEditBtn">編集</button>
       </div>
+      <div class="radio-hint">文章をタップすると、その行だけをその場で直せます。</div>
       <div class="radio-main">
         <div class="radio-side" id="radioSide"></div>
         <div class="radio-body">
