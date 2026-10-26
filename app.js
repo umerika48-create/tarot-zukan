@@ -180,7 +180,7 @@ function renderRadio() {
   const c = CARDS[radioIdx];
   document.getElementById("radioSelect").value = String(radioIdx);
   document.getElementById("radioSide").innerHTML =
-    `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>`;
+    `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>` + radioToolsHtml();
   const text = radioText(c.id);
   const box = document.getElementById("radioScript");
   if (!text.trim()) {
@@ -196,7 +196,7 @@ function renderRadio() {
     }
     first = false;
     if (!line.trim()) return "\n";
-    return `<span class="rl" data-i="${i}">${escapeHtml(line)}</span>\n`;
+    return `<span class="rl" data-i="${i}">${radioMarksToHtml(line)}</span>\n`;
   }).join("").replace(/\n+(?=<span class="rh)/g, "\n");
   box.classList.toggle("hide-head", document.getElementById("radioHideHead").checked);
 }
@@ -225,7 +225,7 @@ function closeRadioEdit() {
   document.getElementById("radioEditBtn").style.display = "";
 }
 function updateRadioCount() {
-  const t = document.getElementById("radioText").value.split("\n").filter(l => !/^##\s/.test(l)).join("").replace(/\s/g, "");
+  const t = document.getElementById("radioText").value.split("\n").filter(l => !/^##\s/.test(l)).join("").replace(RADIO_MARK_RE, "$2").replace(/\s/g, "");
   document.getElementById("radioCount").textContent = "読み上げ部分 約" + t.length + "文字";
 }
 function radioSave(payload) {
@@ -260,6 +260,109 @@ function applyRadioFont() {
   document.getElementById("radioScript").style.fontSize = document.getElementById("radioFont").value + "px";
 }
 
+// ---- マーカー ----
+// 台本の本文に {{色|文字}} の形で保存する（色: y=黄 p=ピンク b=青）。バックアップ・編集画面でもそのまま残る。
+let radioMarkColor = "y";
+let radioSelInfo = null;
+const RADIO_MARK_RE = /\{\{([ypb])\|([^{}]*?)\}\}/g;
+function radioMarksToHtml(line) {
+  let out = "", last = 0, m;
+  RADIO_MARK_RE.lastIndex = 0;
+  while ((m = RADIO_MARK_RE.exec(line))) {
+    out += escapeHtml(line.slice(last, m.index));
+    out += `<mark class="mk mk-${m[1]}">${escapeHtml(m[2])}</mark>`;
+    last = m.index + m[0].length;
+  }
+  return out + escapeHtml(line.slice(last));
+}
+function radioParseMarks(line) { // → [{ch, c}]
+  const chars = []; let last = 0, m;
+  RADIO_MARK_RE.lastIndex = 0;
+  while ((m = RADIO_MARK_RE.exec(line))) {
+    for (const ch of line.slice(last, m.index)) chars.push({ ch, c: null });
+    for (const ch of m[2]) chars.push({ ch, c: m[1] });
+    last = m.index + m[0].length;
+  }
+  for (const ch of line.slice(last)) chars.push({ ch, c: null });
+  return chars;
+}
+function radioSerializeMarks(chars) {
+  let out = "", i = 0;
+  while (i < chars.length) {
+    const c = chars[i].c; let j = i, s = "";
+    while (j < chars.length && chars[j].c === c) { s += chars[j].ch; j++; }
+    out += c ? `{{${c}|${s}}}` : s;
+    i = j;
+  }
+  return out;
+}
+// 範囲[from,to)に色を適用（同じ色が全部に付いていれば外す。colorが"x"なら消す）
+function radioApplyMark(line, from, to, color) {
+  const chars = radioParseMarks(line);
+  const idx = [];
+  for (let k = from; k < Math.min(to, chars.length); k++) if (chars[k].ch.trim()) idx.push(k);
+  if (!idx.length) return line;
+  const allSame = color !== "x" && idx.every(k => chars[k].c === color);
+  for (let k = from; k < Math.min(to, chars.length); k++) chars[k].c = (color === "x" || allSame) ? null : color;
+  return radioSerializeMarks(chars);
+}
+function radioLineLength(line) { return radioParseMarks(line).length; }
+function radioApplyAndSave(lineIdx, from, to, color) {
+  const c = CARDS[radioIdx];
+  const lines = radioText(c.id).split("\n");
+  if (!(lineIdx >= 0 && lineIdx < lines.length) || /^##\s/.test(lines[lineIdx])) return;
+  const nl = radioApplyMark(lines[lineIdx], from, to, color);
+  if (nl === lines[lineIdx]) return;
+  lines[lineIdx] = nl;
+  const y = window.scrollY;
+  radioSave({ cardId: c.id, text: lines.join("\n") }).then(() => { renderRadio(); renderRadioSelect(); window.scrollTo(0, y); });
+}
+function radioCaptureSelection() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+  const r = sel.getRangeAt(0);
+  const sEl = (r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement);
+  const eEl = (r.endContainer.nodeType === 1 ? r.endContainer : r.endContainer.parentElement);
+  const sl = sEl && sEl.closest && sEl.closest("#radioScript .rl:not(.rh)");
+  const el = eEl && eEl.closest && eEl.closest("#radioScript .rl:not(.rh)");
+  if (!sl || sl !== el) return;
+  const pre = document.createRange();
+  pre.selectNodeContents(sl); pre.setEnd(r.startContainer, r.startOffset);
+  const from = [...pre.toString()].length;
+  const len = [...r.toString()].length;
+  if (!len) return;
+  radioSelInfo = { line: parseInt(sl.dataset.i, 10), from, to: from + len, t: Date.now() };
+}
+document.addEventListener("selectionchange", radioCaptureSelection);
+function radioToolsHtml() {
+  const sw = (c, label) => `<button type="button" class="rt-sw sw-${c}${radioMarkColor === c ? " on" : ""}" data-c="${c}" title="${label}">${c === "x" ? "消す" : ""}</button>`;
+  return `<div class="rtools"><div class="rt-title">マーカー</div><div class="rt-row">${sw("y","黄")}${sw("p","ピンク")}${sw("b","青")}${sw("x","消す")}</div>` +
+    `<label class="rt-mode"><input type="checkbox" id="radioLineMode"${radioLineMode ? " checked" : ""}> 行をタップでマーカー</label>` +
+    `<div class="rt-note">文字を選んで色を押すと、その部分だけ塗れます</div></div>`;
+}
+let radioLineMode = false;
+document.getElementById("radioSide").addEventListener("pointerdown", e => { if (e.target.closest(".rt-sw")) e.preventDefault(); });
+document.getElementById("radioSide").addEventListener("click", e => {
+  const b = e.target.closest(".rt-sw");
+  if (!b) return;
+  const color = b.dataset.c;
+  if (color !== "x") radioMarkColor = color;
+  const info = radioSelInfo && (Date.now() - radioSelInfo.t < 30000) ? radioSelInfo : null;
+  radioSelInfo = null;
+  document.querySelectorAll("#radioSide .rt-sw").forEach(x => x.classList.toggle("on", x.dataset.c === radioMarkColor));
+  if (info) {
+    const sel = window.getSelection(); if (sel) sel.removeAllRanges();
+    radioApplyAndSave(info.line, info.from, info.to, color);
+  } else if (color === "x") {
+    radioLineModeEraser = true;
+    document.querySelectorAll("#radioSide .rt-sw").forEach(x => x.classList.toggle("on", x.dataset.c === "x"));
+  } else { radioLineModeEraser = false; }
+});
+document.getElementById("radioSide").addEventListener("change", e => {
+  if (e.target.id === "radioLineMode") radioLineMode = e.target.checked;
+});
+let radioLineModeEraser = false;
+
 // 読んでいる途中の修正：行をタップすると、その場で直せる（保存すると元の表示に戻る）
 let radioInlineOpen = false;
 document.getElementById("radioScript").addEventListener("click", e => {
@@ -269,6 +372,11 @@ document.getElementById("radioScript").addEventListener("click", e => {
   const sel = window.getSelection && window.getSelection().toString();
   if (sel) return; // 文字を選択しているだけのときは開かない
   const i = parseInt(el.dataset.i, 10);
+  if (radioLineMode && !el.classList.contains("rh")) { // 行をタップでマーカー
+    const ln = radioText(CARDS[radioIdx].id).split("\n")[i] || "";
+    radioApplyAndSave(i, 0, radioLineLength(ln), radioLineModeEraser ? "x" : radioMarkColor);
+    return;
+  }
   const c = CARDS[radioIdx];
   const lines = radioText(c.id).split("\n");
   if (!(i >= 0 && i < lines.length)) return;
