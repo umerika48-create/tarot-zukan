@@ -169,7 +169,8 @@ function radioText(id) {
 }
 function radioLabel(c, i) {
   const has = radioText(c.id).trim() ? "●" : "○";
-  return `${has} 第${i + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp}`;
+  const cov = radioCovers[c.id] ? " 🖼" : "";
+  return `${has} 第${i + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp}${cov}`;
 }
 function renderRadioSelect() {
   const sel = document.getElementById("radioSelect");
@@ -178,6 +179,7 @@ function renderRadioSelect() {
 }
 function renderRadio() {
   const c = CARDS[radioIdx];
+  renderRadioCover();
   document.getElementById("radioSelect").value = String(radioIdx);
   document.getElementById("radioSide").innerHTML =
     `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>` + radioToolsHtml();
@@ -250,12 +252,121 @@ function initRadio() {
     renderRadioSelect();
     renderRadio();
     if (typeof ZUKAN_IS_OFFLINE_FILE === "undefined" || !ZUKAN_IS_OFFLINE_FILE) {
+      fetch("/api/radio-covers", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && d.covers && typeof d.covers === "object") { radioCovers = d.covers; renderRadioSelect(); renderRadioCover(); }
+      }).catch(() => {});
       zukanVersionReady.then(() => fetch("/api/radio-scripts")).then(r => r.ok ? r.json() : null).then(d => {
         if (d && typeof d === "object") { radioStore = d; renderRadioSelect(); if (document.getElementById("radioEditWrap").style.display === "none") renderRadio(); }
       }).catch(() => {});
     }
   }
 }
+// ---- カバー画像（回ごとに1枚。/api/radio-covers に、アップした画像をそのまま保存）----
+// 台本とは別保存。ダウンロードは保存した元の画像ファイルがそのまま落ちる（再圧縮しない）。
+let radioCovers = {}; // { カードID: {type, size, name, updatedAt} }
+let radioCoverBusy = false;
+const RADIO_COVER_MAX = 8 * 1024 * 1024;
+const RADIO_COVER_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+function radioCoverUrl(id, m) {
+  return "/api/radio-covers?id=" + encodeURIComponent(id) + "&v=" + encodeURIComponent((m && m.updatedAt) || "");
+}
+function radioFmtBytes(n) {
+  return n >= 1048576 ? (n / 1048576).toFixed(1) + "MB" : Math.max(1, Math.round(n / 1024)) + "KB";
+}
+function renderRadioCover() {
+  const box = document.getElementById("radioCover");
+  if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
+  box.style.display = "";
+  const c = CARDS[radioIdx];
+  const m = radioCovers[c.id];
+  const dis = radioCoverBusy ? " disabled" : "";
+  const busy = radioCoverBusy ? '<span class="rc-busy">処理中…</span>' : "";
+  if (!m) {
+    box.innerHTML =
+      `<button type="button" class="rc-thumb" data-act="pick"${dis}>カバー画像<br>未登録<br>（タップで選ぶ）</button>` +
+      `<div class="rc-main"><div class="rc-title">カバー画像（第${radioIdx + 1}回）</div>` +
+      `<div class="rc-info">stand.fmの回のカバー用。正方形（1400×1400px推奨）のPNG・JPEG・WebP、8MBまで。ここに画像をドラッグしても登録できます。</div>` +
+      `<div class="rc-btns"><button type="button" class="radio-btn save" data-act="pick"${dis}>画像をアップロード</button>${busy}</div></div>`;
+    return;
+  }
+  const ext = RADIO_COVER_EXT[m.type] || "";
+  box.innerHTML =
+    `<button type="button" class="rc-thumb has" data-act="view" title="大きく見る"><img src="${escapeHtml(radioCoverUrl(c.id, m))}" alt="第${radioIdx + 1}回のカバー画像"></button>` +
+    `<div class="rc-main"><div class="rc-title">カバー画像（第${radioIdx + 1}回）</div>` +
+    `<div class="rc-info"><span id="rcDim"></span>${ext.toUpperCase()} ・ ${radioFmtBytes(m.size || 0)}${m.name ? "<br>" + escapeHtml(m.name) : ""}</div>` +
+    `<div class="rc-btns"><button type="button" class="radio-btn" data-act="dl"${dis}>ダウンロード</button>` +
+    `<button type="button" class="radio-btn" data-act="pick"${dis}>差し替え</button>` +
+    `<button type="button" class="radio-btn danger" data-act="del"${dis}>削除</button>${busy}</div></div>`;
+  const img = box.querySelector(".rc-thumb img");
+  img.addEventListener("load", () => {
+    const d = document.getElementById("rcDim");
+    if (d && img.naturalWidth) d.textContent = img.naturalWidth + "×" + img.naturalHeight + " ・ ";
+  });
+}
+function radioCoverUpload(file) {
+  if (!file || radioCoverBusy) return;
+  if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) {
+    alert("オフライン版ではカバー画像を登録できません。オンライン版（https://tarot-zukan.pages.dev）で操作してください。");
+    return;
+  }
+  if (file.type && !/^image\/(png|jpeg|webp)$/.test(file.type)) { alert("PNG・JPEG・WebPの画像を選んでください。"); return; }
+  if (file.size > RADIO_COVER_MAX) { alert("画像が大きすぎます（" + radioFmtBytes(file.size) + "）。8MB以下にしてください。"); return; }
+  const id = CARDS[radioIdx].id;
+  radioCoverBusy = true; renderRadioCover();
+  fetch("/api/radio-covers?id=" + encodeURIComponent(id), {
+    method: "POST",
+    headers: { "Content-Type": file.type || "application/octet-stream", "X-File-Name": encodeURIComponent(file.name || "") },
+    body: file
+  }).then(res => res.json().catch(() => ({})).then(d => ({ res, d }))).then(({ res, d }) => {
+    if (res.status === 413) throw new Error("画像が大きすぎます。8MB以下にしてください。");
+    if (res.status === 415) throw new Error("PNG・JPEG・WebPの画像を選んでください。");
+    if (!res.ok || !d.ok) throw new Error("保存できませんでした。通信を確認して、もう一度お試しください。");
+    radioCovers[id] = d.cover;
+  }).catch(err => {
+    alert(err && err.message ? err.message : "保存できませんでした。通信を確認して、もう一度お試しください。");
+  }).then(() => { radioCoverBusy = false; renderRadioCover(); renderRadioSelect(); });
+}
+function radioCoverDownload() {
+  const c = CARDS[radioIdx], m = radioCovers[c.id];
+  if (!m) return;
+  fetch(radioCoverUrl(c.id, m)).then(r => r.ok ? r.blob() : Promise.reject(new Error("dl"))).then(blob => {
+    const a = document.createElement("a");
+    const safe = String(c.name_jp || c.id).replace(/[\\/:*?"<>|]/g, "");
+    a.href = URL.createObjectURL(blob);
+    a.download = "第" + (radioIdx + 1) + "回_" + safe + "_カバー." + (RADIO_COVER_EXT[m.type] || "png");
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }).catch(() => alert("ダウンロードできませんでした。通信を確認して、もう一度お試しください。"));
+}
+function radioCoverDelete() {
+  const c = CARDS[radioIdx], id = c.id;
+  if (!radioCovers[id] || radioCoverBusy) return;
+  if (!confirm("第" + (radioIdx + 1) + "回のカバー画像を削除します。元に戻せません。\n（必要なら先にダウンロードしてください）\n削除しますか？")) return;
+  radioCoverBusy = true; renderRadioCover();
+  fetch("/api/radio-covers?id=" + encodeURIComponent(id), { method: "DELETE" }).then(r => {
+    if (!r.ok) throw new Error("del");
+    delete radioCovers[id];
+  }).catch(() => alert("削除できませんでした。通信を確認して、もう一度お試しください。"))
+    .then(() => { radioCoverBusy = false; renderRadioCover(); renderRadioSelect(); });
+}
+(function setupRadioCover() {
+  const box = document.getElementById("radioCover");
+  const input = document.getElementById("radioCoverFile");
+  box.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]");
+    if (!b || b.disabled) return;
+    const act = b.dataset.act;
+    if (act === "pick") input.click();
+    else if (act === "dl") radioCoverDownload();
+    else if (act === "del") radioCoverDelete();
+    else if (act === "view") { const c = CARDS[radioIdx]; window.open(radioCoverUrl(c.id, radioCovers[c.id]), "_blank"); }
+  });
+  input.addEventListener("change", () => { const f = input.files && input.files[0]; input.value = ""; radioCoverUpload(f); });
+  ["dragenter", "dragover"].forEach(t => box.addEventListener(t, e => { e.preventDefault(); box.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(t => box.addEventListener(t, e => { e.preventDefault(); box.classList.remove("drag"); }));
+  box.addEventListener("drop", e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) radioCoverUpload(f); });
+})();
+
 function applyRadioFont() {
   document.getElementById("radioScript").style.fontSize = document.getElementById("radioFont").value + "px";
 }

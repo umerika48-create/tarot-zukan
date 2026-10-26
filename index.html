@@ -694,6 +694,19 @@
   .sw-y { background:rgba(255,220,60,.75); } .sw-p { background:rgba(255,120,170,.75); } .sw-b { background:rgba(100,170,255,.75); } .sw-x { background:var(--surface); width:auto; border-radius:17px; padding:0 10px; }
   .rt-mode { display:block; font-size:12px; color:var(--text-dim); margin-top:10px; cursor:pointer; }
   .rt-note { font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.5; }
+  .radio-cover { display:flex; gap:14px; align-items:center; margin:0 0 18px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .radio-cover.drag { border-color:var(--gold); background:var(--surface-hover); }
+  .rc-thumb { flex:0 0 auto; width:108px; height:108px; border-radius:10px; border:1px dashed var(--gold-dim); background:var(--bg); display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; line-height:1.5; color:var(--text-dim); overflow:hidden; padding:0; cursor:pointer; font-family:inherit; }
+  .rc-thumb.has { border:1px solid var(--border); cursor:zoom-in; }
+  .rc-thumb img { width:100%; height:100%; object-fit:contain; display:block; }
+  .rc-main { min-width:0; flex:1; }
+  .rc-title { font-size:13px; color:var(--gold); font-weight:700; margin-bottom:2px; }
+  .rc-info { font-size:12px; color:var(--text-dim); line-height:1.6; word-break:break-all; }
+  .rc-btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .rc-btns .radio-btn { padding:6px 12px; }
+  .radio-btn.danger:hover { border-color:#c0564f; color:#e8a29d; }
+  .radio-btn[disabled] { opacity:.5; cursor:default; }
+  .rc-busy { font-size:12px; color:var(--gold-dim); margin-left:4px; }
   .radio-empty { font-size:14px; color:var(--text-dim); line-height:1.8; padding:20px 4px; }
   .radio-editwrap textarea { width:100%; min-height:60vh; box-sizing:border-box; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:14px; font-family:inherit; font-size:16px; line-height:1.8; resize:vertical; }
   .radio-editbtns { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
@@ -707,6 +720,8 @@
     .rt-title, .rt-note { display:none; }
     .rt-sw { width:30px; height:30px; }
     .rt-mode { margin-top:0; }
+    .rc-thumb { width:84px; height:84px; }
+    .radio-cover { gap:10px; padding:10px; }
   }
 
   .course-toolbar { max-width:640px; margin-bottom:14px; }
@@ -1118,6 +1133,8 @@
       <div class="radio-main">
         <div class="radio-side" id="radioSide"></div>
         <div class="radio-body">
+          <div class="radio-cover" id="radioCover"></div>
+          <input type="file" id="radioCoverFile" accept="image/png,image/jpeg,image/webp" hidden>
           <div class="radio-script" id="radioScript"></div>
           <div class="radio-editwrap" id="radioEditWrap" style="display:none;">
             <textarea id="radioText" spellcheck="false" placeholder="ここに台本を貼り付け／入力します。「## 」で始まる行は編集用の見出し（読み上げない部分）として小さく表示されます。"></textarea>
