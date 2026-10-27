@@ -221,6 +221,7 @@ function renderRadio() {
   box.classList.toggle("hide-head", document.getElementById("radioHideHead").checked);
 }
 function radioGo(i) {
+  radioUserNav = true; // 自分で回を動かしたら、開いた時の自動ジャンプはしない
   radioInlineOpen = false;
   radioIdx = (i + CARDS.length) % CARDS.length;
   closeRadioEdit();
@@ -259,6 +260,18 @@ function radioSave(payload) {
     return true;
   }).catch(err => { if (!(err && err.zukanStale)) alert("保存できませんでした。通信を確認して、もう一度お試しください。"); return false; });
 }
+// ラジオを開いた時の最初の回：「台本があって、まだ配信済みの記録がない回」のうち一番古い（番号が小さい）回。
+// 該当がなければ（全部配信済み・台本なし）、前回見ていた回のまま。
+let radioUserNav = false;
+function radioOldestUnpublishedIdx() {
+  for (let i = 0; i < CARDS.length; i++) {
+    const id = CARDS[i].id;
+    const p = radioPublished[id];
+    const published = p && /^\d{4}-\d{2}-\d{2}$/.test(p.date || "");
+    if (!published && radioText(id).trim()) return i;
+  }
+  return -1;
+}
 function initRadio() {
   if (!radioLoaded) {
     radioLoaded = true;
@@ -273,12 +286,22 @@ function initRadio() {
       fetch("/api/radio-covers", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
         if (d && d.covers && typeof d.covers === "object") { radioCovers = d.covers; renderRadioSelect(); renderRadioCover(); }
       }).catch(() => {});
-      fetch("/api/radio-published", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
-        if (d && d.published && typeof d.published === "object") { radioPublished = d.published; renderRadioPublished(); }
-      }).catch(() => {});
-      zukanVersionReady.then(() => fetch("/api/radio-scripts")).then(r => r.ok ? r.json() : null).then(d => {
+      const pubReq = fetch("/api/radio-published", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && d.published && typeof d.published === "object") { radioPublished = d.published; renderRadioPublished(); return true; }
+        return false;
+      }).catch(() => false);
+      const scrReq = zukanVersionReady.then(() => fetch("/api/radio-scripts")).then(r => r.ok ? r.json() : null).then(d => {
         if (d && typeof d === "object") { radioStore = d; renderRadioSelect(); if (document.getElementById("radioEditWrap").style.display === "none") renderRadio(); }
       }).catch(() => {});
+      // 両方そろってから、一番古い未配信の回へ（配信日を読めなかったときは動かさない）
+      Promise.all([pubReq, scrReq]).then(([pubOk]) => {
+        if (!pubOk || radioUserNav || radioInlineOpen || document.getElementById("radioEditWrap").style.display !== "none") return;
+        const t = radioOldestUnpublishedIdx();
+        if (t < 0 || t === radioIdx) return;
+        radioIdx = t;
+        renderRadioSelect(); renderRadio();
+        try { localStorage.setItem("radioIdx", String(radioIdx)); } catch (e) {}
+      });
     }
   }
 }
