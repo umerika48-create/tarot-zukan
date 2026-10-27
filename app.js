@@ -169,7 +169,7 @@ function radioText(id) {
 }
 function radioLabel(c, i) {
   const has = radioText(c.id).trim() ? "●" : "○";
-  const cov = radioCovers[c.id] ? " 🖼" : "";
+  const cov = (radioCovers[c.id] ? " 🖼" : "") + (radioSchedule[c.id] && radioSchedule[c.id].reserved ? " ✔予約済" : "");
   return `${has} 第${i + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp}${cov}`;
 }
 function renderRadioSelect() {
@@ -177,23 +177,45 @@ function renderRadioSelect() {
   sel.innerHTML = CARDS.map((c, i) => `<option value="${i}">${escapeHtml(radioLabel(c, i))}</option>`).join("");
   sel.value = String(radioIdx);
 }
-// 配信日（stand.fmに配信した日）。画面からは入力せず、Claudeが /api/radio-published に記録する（表示のみ）。
-let radioPublished = {}; // { カードID: {date:"YYYY-MM-DD", recordedAt} }
+// 配信予定日と予約済み（stand.fm）。各回の上部から入力でき、/api/radio-schedule に保存する。
+let radioSchedule = {}; // { カードID: {date:"YYYY-MM-DD"|"", reserved:bool} }
+function radioFmtDate(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return `${y}年${m}月${d}日（${"日月火水木金土"[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}）`;
+}
 function renderRadioPublished() {
   const box = document.getElementById("radioPublished");
   if (!box) return;
-  const c = CARDS[radioIdx];
-  const p = radioPublished[c.id];
-  if (p && /^\d{4}-\d{2}-\d{2}$/.test(p.date || "")) {
-    const [y, m, d] = p.date.split("-").map(Number);
-    const wd = "日月火水木金土"[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
-    box.className = "radio-pub done";
-    box.textContent = `📻 stand.fm 配信済み｜${y}年${m}月${d}日（${wd}）`;
-  } else {
-    box.className = "radio-pub";
-    box.textContent = "📻 stand.fm 未配信（配信したら、Claudeに「配信したよ」と伝えると日付が記録されます）";
-  }
+  if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
+  box.style.display = "";
+  const s = radioSchedule[CARDS[radioIdx].id] || {};
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(s.date || "") ? s.date : "";
+  box.className = "radio-pub" + (s.reserved ? " done" : "");
+  box.innerHTML =
+    `<span class="rp-label">📻 stand.fm</span>` +
+    `<label class="rp-field">配信予定日 <input type="date" id="radioSchedDate" value="${date}"></label>` +
+    (date ? `<span class="rp-wd">${radioFmtDate(date)}</span>` : "") +
+    `<label class="rp-field rp-check"><input type="checkbox" id="radioSchedReserved"${s.reserved ? " checked" : ""}> 予約済み</label>`;
 }
+function radioScheduleSave(payload) {
+  const id = CARDS[radioIdx].id;
+  const prev = radioSchedule[id];
+  const cur = Object.assign({ date: "", reserved: false }, prev, payload);
+  if (!cur.date && !cur.reserved) delete radioSchedule[id]; else radioSchedule[id] = { date: cur.date, reserved: cur.reserved };
+  renderRadioPublished(); renderRadioSelect(); // 先に画面へ反映
+  fetch("/api/radio-schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ cardId: id }, payload)) })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("save")))
+    .then(d => { if (d && d.schedule) { radioSchedule = d.schedule; renderRadioPublished(); renderRadioSelect(); } })
+    .catch(() => {
+      if (prev) radioSchedule[id] = prev; else delete radioSchedule[id];
+      renderRadioPublished(); renderRadioSelect();
+      alert("保存できませんでした。通信を確認して、もう一度お試しください。");
+    });
+}
+document.getElementById("radioPublished").addEventListener("change", e => {
+  if (e.target.id === "radioSchedDate") radioScheduleSave({ date: e.target.value || "" });
+  else if (e.target.id === "radioSchedReserved") radioScheduleSave({ reserved: e.target.checked });
+});
 function renderRadio() {
   const c = CARDS[radioIdx];
   renderRadioPublished();
@@ -260,15 +282,13 @@ function radioSave(payload) {
     return true;
   }).catch(err => { if (!(err && err.zukanStale)) alert("保存できませんでした。通信を確認して、もう一度お試しください。"); return false; });
 }
-// ラジオを開いた時の最初の回：「台本があって、まだ配信済みの記録がない回」のうち一番古い（番号が小さい）回。
-// 該当がなければ（全部配信済み・台本なし）、前回見ていた回のまま。
+// ラジオを開いた時の最初の回：「台本があって、予約済みでない回」のうち一番古い（番号が小さい）回。
+// 該当がなければ（全部予約済み・台本なし）、前回見ていた回のまま。
 let radioUserNav = false;
-function radioOldestUnpublishedIdx() {
+function radioOldestUnreservedIdx() {
   for (let i = 0; i < CARDS.length; i++) {
     const id = CARDS[i].id;
-    const p = radioPublished[id];
-    const published = p && /^\d{4}-\d{2}-\d{2}$/.test(p.date || "");
-    if (!published && radioText(id).trim()) return i;
+    if (!(radioSchedule[id] && radioSchedule[id].reserved) && radioText(id).trim()) return i;
   }
   return -1;
 }
@@ -286,17 +306,17 @@ function initRadio() {
       fetch("/api/radio-covers", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
         if (d && d.covers && typeof d.covers === "object") { radioCovers = d.covers; renderRadioSelect(); renderRadioCover(); }
       }).catch(() => {});
-      const pubReq = fetch("/api/radio-published", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
-        if (d && d.published && typeof d.published === "object") { radioPublished = d.published; renderRadioPublished(); return true; }
+      const pubReq = fetch("/api/radio-schedule", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && d.schedule && typeof d.schedule === "object") { radioSchedule = d.schedule; renderRadioPublished(); renderRadioSelect(); return true; }
         return false;
       }).catch(() => false);
       const scrReq = zukanVersionReady.then(() => fetch("/api/radio-scripts")).then(r => r.ok ? r.json() : null).then(d => {
         if (d && typeof d === "object") { radioStore = d; renderRadioSelect(); if (document.getElementById("radioEditWrap").style.display === "none") renderRadio(); }
       }).catch(() => {});
-      // 両方そろってから、一番古い未配信の回へ（配信日を読めなかったときは動かさない）
+      // 両方そろってから、一番古い未予約の回へ（予約の記録を読めなかったときは動かさない）
       Promise.all([pubReq, scrReq]).then(([pubOk]) => {
         if (!pubOk || radioUserNav || radioInlineOpen || document.getElementById("radioEditWrap").style.display !== "none") return;
-        const t = radioOldestUnpublishedIdx();
+        const t = radioOldestUnreservedIdx();
         if (t < 0 || t === radioIdx) return;
         radioIdx = t;
         renderRadioSelect(); renderRadio();
