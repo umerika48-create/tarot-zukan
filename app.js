@@ -177,8 +177,26 @@ function renderRadioSelect() {
   sel.innerHTML = CARDS.map((c, i) => `<option value="${i}">${escapeHtml(radioLabel(c, i))}</option>`).join("");
   sel.value = String(radioIdx);
 }
+// 配信日（stand.fmに配信した日）。画面からは入力せず、Claudeが /api/radio-published に記録する（表示のみ）。
+let radioPublished = {}; // { カードID: {date:"YYYY-MM-DD", recordedAt} }
+function renderRadioPublished() {
+  const box = document.getElementById("radioPublished");
+  if (!box) return;
+  const c = CARDS[radioIdx];
+  const p = radioPublished[c.id];
+  if (p && /^\d{4}-\d{2}-\d{2}$/.test(p.date || "")) {
+    const [y, m, d] = p.date.split("-").map(Number);
+    const wd = "日月火水木金土"[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    box.className = "radio-pub done";
+    box.textContent = `📻 stand.fm 配信済み｜${y}年${m}月${d}日（${wd}）`;
+  } else {
+    box.className = "radio-pub";
+    box.textContent = "📻 stand.fm 未配信（配信したら、Claudeに「配信したよ」と伝えると日付が記録されます）";
+  }
+}
 function renderRadio() {
   const c = CARDS[radioIdx];
+  renderRadioPublished();
   renderRadioCover();
   document.getElementById("radioSelect").value = String(radioIdx);
   document.getElementById("radioSide").innerHTML =
@@ -254,6 +272,9 @@ function initRadio() {
     if (typeof ZUKAN_IS_OFFLINE_FILE === "undefined" || !ZUKAN_IS_OFFLINE_FILE) {
       fetch("/api/radio-covers", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
         if (d && d.covers && typeof d.covers === "object") { radioCovers = d.covers; renderRadioSelect(); renderRadioCover(); }
+      }).catch(() => {});
+      fetch("/api/radio-published", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && d.published && typeof d.published === "object") { radioPublished = d.published; renderRadioPublished(); }
       }).catch(() => {});
       zukanVersionReady.then(() => fetch("/api/radio-scripts")).then(r => r.ok ? r.json() : null).then(d => {
         if (d && typeof d === "object") { radioStore = d; renderRadioSelect(); if (document.getElementById("radioEditWrap").style.display === "none") renderRadio(); }
