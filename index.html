@@ -703,7 +703,11 @@
   .radio-pub .rp-wd { color:var(--text-dim); }
   .radio-post { margin:0 0 18px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
   .rpost-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-  .rpost-title { font-size:13px; color:var(--gold); font-weight:700; margin-right:auto; }
+  .rpost-toggle { flex:1; min-width:0; display:flex; align-items:center; gap:8px; background:none; border:none; color:var(--gold); font-family:inherit; font-size:13px; font-weight:700; text-align:left; padding:4px 0; cursor:pointer; }
+  .rpost-arrow { display:inline-block; width:1em; }
+  .rpost-sum { flex:1; min-width:0; font-weight:400; color:var(--text-dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .radio-post:not(.open) { padding:6px 12px; }
+  .radio-post:not(.open) .rpost-head { margin-bottom:0; }
   .rpost-row { margin:0 0 12px; }
   .rpost-lab { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim); margin-bottom:4px; }
   .rpost-cnt { font-size:11px; color:var(--text-dim); }

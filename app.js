@@ -220,6 +220,7 @@ document.getElementById("radioPublished").addEventListener("change", e => {
 // カバー画像の下に表示。項目ごとにコピーでき、「直す」でその場で編集して保存できる。
 let radioPosts = {}; // { カードID: {title, category, tags, desc} }
 let radioPostEdit = false;
+let radioPostOpen = false; // 普段は閉じておき、見出しをタップすると開く
 const RADIO_POST_FIELDS = [
   { k: "title", label: "タイトル", max: 40, rows: 1 },
   { k: "category", label: "カテゴリ", rows: 1 },
@@ -234,7 +235,10 @@ function renderRadioPost() {
   box.style.display = "";
   const c = CARDS[radioIdx];
   const p = radioPosts[c.id];
-  const head = `<div class="rpost-head"><span class="rpost-title">stand.fm 投稿用（第${radioIdx + 1}回）</span>`;
+  const open = radioPostOpen || radioPostEdit;
+  box.classList.toggle("open", open);
+  const head = `<div class="rpost-head"><button type="button" class="rpost-toggle" data-act="toggle" aria-expanded="${open}"><span class="rpost-arrow">${open ? "▾" : "▸"}</span> stand.fm 投稿用（第${radioIdx + 1}回）${!open && p && p.title ? `<span class="rpost-sum">${escapeHtml(p.title)}</span>` : ""}</button>`;
+  if (!open) { box.innerHTML = head + `</div>`; return; }
   if (radioPostEdit) {
     box.innerHTML = head + `</div>` + RADIO_POST_FIELDS.map(f => {
       const v = (p && p[f.k]) || "";
@@ -295,7 +299,8 @@ function radioPostSave() {
     const b = e.target.closest("[data-act]");
     if (!b) return;
     const act = b.dataset.act, p = radioPosts[CARDS[radioIdx].id] || {};
-    if (act === "copy") radioCopyText(p[b.dataset.f] || "", b);
+    if (act === "toggle") { if (!radioPostEdit) { radioPostOpen = !radioPostOpen; renderRadioPost(); } }
+    else if (act === "copy") radioCopyText(p[b.dataset.f] || "", b);
     else if (act === "edit") { radioPostEdit = true; renderRadioPost(); }
     else if (act === "cancel") { radioPostEdit = false; renderRadioPost(); }
     else if (act === "save") radioPostSave();
@@ -333,6 +338,7 @@ function radioGo(i) {
   radioUserNav = true; // 自分で回を動かしたら、開いた時の自動ジャンプはしない
   radioInlineOpen = false;
   radioPostEdit = false;
+  radioPostOpen = false;
   radioIdx = (i + CARDS.length) % CARDS.length;
   closeRadioEdit();
   renderRadio();
