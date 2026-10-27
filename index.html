@@ -701,6 +701,17 @@
   .radio-pub input[type=date] { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:4px 8px; font-family:inherit; font-size:13px; color-scheme:dark; }
   .radio-pub .rp-check input { width:18px; height:18px; accent-color:var(--gold); }
   .radio-pub .rp-wd { color:var(--text-dim); }
+  .radio-post { margin:0 0 18px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .rpost-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .rpost-title { font-size:13px; color:var(--gold); font-weight:700; margin-right:auto; }
+  .rpost-row { margin:0 0 12px; }
+  .rpost-lab { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim); margin-bottom:4px; }
+  .rpost-cnt { font-size:11px; color:var(--text-dim); }
+  .rpost-cnt.over { color:#e8a29d; font-weight:700; }
+  .rpost-copy { margin-left:auto; padding:4px 10px; font-size:12px; }
+  .rpost-val { font-size:14px; line-height:1.7; color:var(--text); white-space:pre-wrap; word-break:break-word; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+  .rpost-ta { width:100%; box-sizing:border-box; background:var(--bg); color:var(--text); border:1px solid var(--gold-dim); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:14px; line-height:1.7; resize:vertical; }
+  .rpost-btns { display:flex; gap:8px; margin-top:6px; }
   .radio-cover { display:flex; gap:14px; align-items:center; margin:0 0 18px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
   .radio-cover.drag { border-color:var(--gold); background:var(--surface-hover); }
   .rc-thumb { flex:0 0 auto; width:108px; height:108px; border-radius:10px; border:1px dashed var(--gold-dim); background:var(--bg); display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; line-height:1.5; color:var(--text-dim); overflow:hidden; padding:0; cursor:pointer; font-family:inherit; }
@@ -1142,6 +1153,7 @@
         <div class="radio-body">
           <div class="radio-pub" id="radioPublished"></div>
           <div class="radio-cover" id="radioCover"></div>
+          <div class="radio-post" id="radioPost"></div>
           <input type="file" id="radioCoverFile" accept="image/png,image/jpeg,image/webp" hidden>
           <div class="radio-script" id="radioScript"></div>
           <div class="radio-editwrap" id="radioEditWrap" style="display:none;">

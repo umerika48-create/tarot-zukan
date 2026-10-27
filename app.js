@@ -216,10 +216,97 @@ document.getElementById("radioPublished").addEventListener("change", e => {
   if (e.target.id === "radioSchedDate") radioScheduleSave({ date: e.target.value || "" });
   else if (e.target.id === "radioSchedReserved") radioScheduleSave({ reserved: e.target.checked });
 });
+// ---- stand.fm投稿用テキスト（タイトル・カテゴリ・ハッシュタグ・放送の説明）。/api/radio-posts に保存 ----
+// カバー画像の下に表示。項目ごとにコピーでき、「直す」でその場で編集して保存できる。
+let radioPosts = {}; // { カードID: {title, category, tags, desc} }
+let radioPostEdit = false;
+const RADIO_POST_FIELDS = [
+  { k: "title", label: "タイトル", max: 40, rows: 1 },
+  { k: "category", label: "カテゴリ", rows: 1 },
+  { k: "tags", label: "ハッシュタグ", rows: 2 },
+  { k: "desc", label: "放送の説明", max: 800, rows: 14 }
+];
+function radioPostLen(s) { return Array.from(s || "").length; }
+function renderRadioPost() {
+  const box = document.getElementById("radioPost");
+  if (!box) return;
+  if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
+  box.style.display = "";
+  const c = CARDS[radioIdx];
+  const p = radioPosts[c.id];
+  const head = `<div class="rpost-head"><span class="rpost-title">stand.fm 投稿用（第${radioIdx + 1}回）</span>`;
+  if (radioPostEdit) {
+    box.innerHTML = head + `</div>` + RADIO_POST_FIELDS.map(f => {
+      const v = (p && p[f.k]) || "";
+      return `<div class="rpost-row"><div class="rpost-lab">${f.label}<span class="rpost-cnt" data-cnt="${f.k}"></span></div>` +
+        `<textarea class="rpost-ta" data-f="${f.k}" rows="${f.rows}" spellcheck="false">${escapeHtml(v)}</textarea></div>`;
+    }).join("") + `<div class="rpost-btns"><button type="button" class="radio-btn save" data-act="save">保存</button><button type="button" class="radio-btn" data-act="cancel">キャンセル</button></div>`;
+    box.querySelectorAll(".rpost-ta").forEach(updateRadioPostCount);
+    return;
+  }
+  if (!p) {
+    box.innerHTML = head + `</div><div class="rc-info">まだありません。「入力する」から、タイトル・カテゴリ・ハッシュタグ・放送の説明を入れられます。</div>` +
+      `<div class="rpost-btns"><button type="button" class="radio-btn save" data-act="edit">入力する</button></div>`;
+    return;
+  }
+  box.innerHTML = head + `<button type="button" class="radio-btn" data-act="edit">直す</button></div>` + RADIO_POST_FIELDS.map(f => {
+    const v = p[f.k] || "";
+    const n = radioPostLen(v);
+    const over = f.max && n > f.max;
+    return `<div class="rpost-row"><div class="rpost-lab">${f.label}` +
+      (f.max ? `<span class="rpost-cnt${over ? " over" : ""}">${n}/${f.max}字</span>` : "") +
+      `<button type="button" class="radio-btn rpost-copy" data-act="copy" data-f="${f.k}">コピー</button></div>` +
+      `<div class="rpost-val">${escapeHtml(v) || '<span class="rc-info">（なし）</span>'}</div></div>`;
+  }).join("");
+}
+function updateRadioPostCount(ta) {
+  const f = RADIO_POST_FIELDS.find(x => x.k === ta.dataset.f);
+  const el = document.querySelector(`#radioPost [data-cnt="${f.k}"]`);
+  if (!el || !f.max) return;
+  const n = radioPostLen(ta.value);
+  el.textContent = `${n}/${f.max}字`;
+  el.classList.toggle("over", n > f.max);
+}
+function radioCopyText(text, btn) {
+  const done = () => { const o = btn.textContent; btn.textContent = "コピーしました"; setTimeout(() => { btn.textContent = o; }, 1500); };
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { alert("コピーできませんでした。文字を選んでコピーしてください。"); }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
+  else fallback();
+}
+function radioPostSave() {
+  const id = CARDS[radioIdx].id;
+  const payload = { cardId: id };
+  document.querySelectorAll("#radioPost .rpost-ta").forEach(ta => { payload[ta.dataset.f] = ta.value.trim(); });
+  fetch("/api/radio-posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("save")))
+    .then(d => { if (d && d.posts) { radioPosts = d.posts; radioPostEdit = false; renderRadioPost(); } })
+    .catch(() => alert("保存できませんでした。通信を確認して、もう一度お試しください。"));
+}
+(function setupRadioPost() {
+  const box = document.getElementById("radioPost");
+  if (!box) return;
+  box.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    const act = b.dataset.act, p = radioPosts[CARDS[radioIdx].id] || {};
+    if (act === "copy") radioCopyText(p[b.dataset.f] || "", b);
+    else if (act === "edit") { radioPostEdit = true; renderRadioPost(); }
+    else if (act === "cancel") { radioPostEdit = false; renderRadioPost(); }
+    else if (act === "save") radioPostSave();
+  });
+  box.addEventListener("input", e => { if (e.target.classList && e.target.classList.contains("rpost-ta")) updateRadioPostCount(e.target); });
+})();
 function renderRadio() {
   const c = CARDS[radioIdx];
   renderRadioPublished();
   renderRadioCover();
+  renderRadioPost();
   document.getElementById("radioSelect").value = String(radioIdx);
   document.getElementById("radioSide").innerHTML =
     `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>` + radioToolsHtml();
@@ -245,6 +332,7 @@ function renderRadio() {
 function radioGo(i) {
   radioUserNav = true; // 自分で回を動かしたら、開いた時の自動ジャンプはしない
   radioInlineOpen = false;
+  radioPostEdit = false;
   radioIdx = (i + CARDS.length) % CARDS.length;
   closeRadioEdit();
   renderRadio();
@@ -305,6 +393,9 @@ function initRadio() {
     if (typeof ZUKAN_IS_OFFLINE_FILE === "undefined" || !ZUKAN_IS_OFFLINE_FILE) {
       fetch("/api/radio-covers", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
         if (d && d.covers && typeof d.covers === "object") { radioCovers = d.covers; renderRadioSelect(); renderRadioCover(); }
+      }).catch(() => {});
+      fetch("/api/radio-posts", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && d.posts && typeof d.posts === "object") { radioPosts = d.posts; if (!radioPostEdit) renderRadioPost(); }
       }).catch(() => {});
       const pubReq = fetch("/api/radio-schedule", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
         if (d && d.schedule && typeof d.schedule === "object") { radioSchedule = d.schedule; renderRadioPublished(); renderRadioSelect(); return true; }
@@ -2879,12 +2970,12 @@ renderGrid();
     Promise.all([
       get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"),
       get("/api/courses"), get("/api/context-notes"), get("/api/course-row-memos"),
-      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos"), get("/api/radio-scripts")
+      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos"), get("/api/radio-scripts"), get("/api/radio-posts")
     ])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos, radioScripts]) => {
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos, radioScripts, radioPostsData]) => {
         const backup = {
           symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos,
-          journal, memoFolders, memoNotes, courseMemos, radioScripts,
+          journal, memoFolders, memoNotes, courseMemos, radioScripts, radioPosts: radioPostsData,
           exportedAt: new Date().toISOString()
         };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
