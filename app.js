@@ -457,11 +457,13 @@ function renderRadioCover() {
     return;
   }
   const ext = RADIO_COVER_EXT[m.type] || "";
+  radioCoverPrefetch();
   box.innerHTML =
     `<button type="button" class="rc-thumb has" data-act="view" title="大きく見る"><img src="${escapeHtml(radioCoverUrl(c.id, m))}" alt="第${radioIdx + 1}回のカバー画像"></button>` +
     `<div class="rc-main"><div class="rc-title">カバー画像（第${radioIdx + 1}回）</div>` +
     `<div class="rc-info"><span id="rcDim"></span>${ext.toUpperCase()} ・ ${radioFmtBytes(m.size || 0)}${m.name ? "<br>" + escapeHtml(m.name) : ""}</div>` +
-    `<div class="rc-btns"><button type="button" class="radio-btn" data-act="dl"${dis}>ダウンロード</button>` +
+    `<div class="rc-btns"><button type="button" class="radio-btn save" data-act="photo"${dis}>📱 写真に保存</button>` +
+    `<button type="button" class="radio-btn" data-act="dl"${dis}>ダウンロード</button>` +
     `<button type="button" class="radio-btn" data-act="pick"${dis}>差し替え</button>` +
     `<button type="button" class="radio-btn danger" data-act="del"${dis}>削除</button>${busy}</div></div>`;
   const img = box.querySelector(".rc-thumb img");
@@ -492,6 +494,37 @@ function radioCoverUpload(file) {
   }).catch(err => {
     alert(err && err.message ? err.message : "保存できませんでした。通信を確認して、もう一度お試しください。");
   }).then(() => { radioCoverBusy = false; renderRadioCover(); renderRadioSelect(); });
+}
+// 「写真に保存」：iPhoneでは、共有シート（Web Share API）を開き、「画像を保存」でカメラロールに入る。
+// ボタンを押した直後に共有シートを開く必要があるため、画像は表示時に先に読み込んでおく（radioCoverBlobs）。
+const radioCoverBlobs = {}; // { 画像URL: Blob }
+function radioCoverFileName(c, m) {
+  const safe = String(c.name_jp || c.id).replace(/[\\/:*?"<>|]/g, "");
+  return "第" + (radioIdx + 1) + "回_" + safe + "_カバー." + (RADIO_COVER_EXT[m.type] || "png");
+}
+function radioCoverPrefetch() {
+  const c = CARDS[radioIdx], m = radioCovers[c.id];
+  if (!m) return;
+  const url = radioCoverUrl(c.id, m);
+  if (radioCoverBlobs[url]) return;
+  fetch(url).then(r => r.ok ? r.blob() : null).then(b => { if (b) radioCoverBlobs[url] = b; }).catch(() => {});
+}
+function radioCoverToPhotos() {
+  const c = CARDS[radioIdx], m = radioCovers[c.id];
+  if (!m) return;
+  const url = radioCoverUrl(c.id, m);
+  const share = blob => {
+    const file = new File([blob], radioCoverFileName(c, m), { type: m.type || blob.type || "image/png" });
+    if (!(navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share)) return Promise.reject(new Error("noshare"));
+    return navigator.share({ files: [file] });
+  };
+  const fallback = () => {
+    alert("このブラウザでは、写真への保存ボタンが使えません。\n画像が開いたら、画像を長押しして「“写真”に追加」を選んでください。");
+    window.open(url, "_blank");
+  };
+  const cached = radioCoverBlobs[url];
+  const p = cached ? share(cached) : fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error("dl"))).then(b => { radioCoverBlobs[url] = b; return share(b); });
+  p.catch(err => { if (err && err.name === "AbortError") return; fallback(); }); // 共有シートを閉じただけのときは、何もしない
 }
 function radioCoverDownload() {
   const c = CARDS[radioIdx], m = radioCovers[c.id];
@@ -524,6 +557,7 @@ function radioCoverDelete() {
     if (!b || b.disabled) return;
     const act = b.dataset.act;
     if (act === "pick") input.click();
+    else if (act === "photo") radioCoverToPhotos();
     else if (act === "dl") radioCoverDownload();
     else if (act === "del") radioCoverDelete();
     else if (act === "view") { const c = CARDS[radioIdx]; window.open(radioCoverUrl(c.id, radioCovers[c.id]), "_blank"); }
