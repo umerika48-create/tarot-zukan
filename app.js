@@ -224,9 +224,14 @@ let radioPostOpen = false; // 普段は閉じておき、見出しをタップ�
 const RADIO_POST_FIELDS = [
   { k: "title", label: "タイトル", max: 40, rows: 1 },
   { k: "category", label: "カテゴリ", rows: 1 },
-  { k: "tags", label: "ハッシュタグ", rows: 2 },
-  { k: "desc", label: "放送の説明", max: 800, rows: 14 }
+  { k: "desc", label: "放送の説明（ハッシュタグ込み）", max: 800, rows: 18 }
 ];
+// 放送の説明とハッシュタグは1つの欄（説明の最後にハッシュタグ）。旧データに別項目 tags が残っていれば、後ろにつなげて扱う。
+function radioPostVal(p, k) {
+  if (!p) return "";
+  if (k === "desc") return [p.desc || "", p.tags || ""].filter(x => x.trim()).join("\n\n");
+  return p[k] || "";
+}
 function radioPostLen(s) { return Array.from(s || "").length; }
 function renderRadioPost() {
   const box = document.getElementById("radioPost");
@@ -241,7 +246,7 @@ function renderRadioPost() {
   if (!open) { box.innerHTML = head + `</div>`; return; }
   if (radioPostEdit) {
     box.innerHTML = head + `</div>` + RADIO_POST_FIELDS.map(f => {
-      const v = (p && p[f.k]) || "";
+      const v = radioPostVal(p, f.k);
       return `<div class="rpost-row"><div class="rpost-lab">${f.label}<span class="rpost-cnt" data-cnt="${f.k}"></span></div>` +
         `<textarea class="rpost-ta" data-f="${f.k}" rows="${f.rows}" spellcheck="false">${escapeHtml(v)}</textarea></div>`;
     }).join("") + `<div class="rpost-btns"><button type="button" class="radio-btn save" data-act="save">保存</button><button type="button" class="radio-btn" data-act="cancel">キャンセル</button></div>`;
@@ -249,12 +254,12 @@ function renderRadioPost() {
     return;
   }
   if (!p) {
-    box.innerHTML = head + `</div><div class="rc-info">まだありません。「入力する」から、タイトル・カテゴリ・ハッシュタグ・放送の説明を入れられます。</div>` +
+    box.innerHTML = head + `</div><div class="rc-info">まだありません。「入力する」から、タイトル・カテゴリ・放送の説明（ハッシュタグ込み）を入れられます。</div>` +
       `<div class="rpost-btns"><button type="button" class="radio-btn save" data-act="edit">入力する</button></div>`;
     return;
   }
   box.innerHTML = head + `<button type="button" class="radio-btn" data-act="edit">直す</button></div>` + RADIO_POST_FIELDS.map(f => {
-    const v = p[f.k] || "";
+    const v = radioPostVal(p, f.k);
     const n = radioPostLen(v);
     const over = f.max && n > f.max;
     return `<div class="rpost-row"><div class="rpost-lab">${f.label}` +
@@ -287,6 +292,7 @@ function radioPostSave() {
   const id = CARDS[radioIdx].id;
   const payload = { cardId: id };
   document.querySelectorAll("#radioPost .rpost-ta").forEach(ta => { payload[ta.dataset.f] = ta.value.trim(); });
+  payload.tags = ""; // ハッシュタグは放送の説明の中に入れる（別項目は使わない）
   fetch("/api/radio-posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
     .then(r => r.ok ? r.json() : Promise.reject(new Error("save")))
     .then(d => { if (d && d.posts) { radioPosts = d.posts; radioPostEdit = false; renderRadioPost(); } })
@@ -300,7 +306,7 @@ function radioPostSave() {
     if (!b) return;
     const act = b.dataset.act, p = radioPosts[CARDS[radioIdx].id] || {};
     if (act === "toggle") { if (!radioPostEdit) { radioPostOpen = !radioPostOpen; renderRadioPost(); } }
-    else if (act === "copy") radioCopyText(p[b.dataset.f] || "", b);
+    else if (act === "copy") radioCopyText(radioPostVal(p, b.dataset.f), b);
     else if (act === "edit") { radioPostEdit = true; renderRadioPost(); }
     else if (act === "cancel") { radioPostEdit = false; renderRadioPost(); }
     else if (act === "save") radioPostSave();
