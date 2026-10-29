@@ -2811,6 +2811,7 @@ function openCourseDetail(course) {
   }
 
   courseDetailBackdrop.classList.remove("hidden");
+  autosizeCourseMemo();
 }
 
 const courseGlossaryBackdrop = document.getElementById("courseGlossaryBackdrop");
@@ -2826,8 +2827,14 @@ document.getElementById("courseDetailClose").addEventListener("click", () => cou
 courseDetailBackdrop.addEventListener("click", (e) => { if (e.target === courseDetailBackdrop) courseDetailBackdrop.classList.add("hidden"); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { courseEditBackdrop && courseEditBackdrop.classList.add("hidden"); courseDetailBackdrop.classList.add("hidden"); courseGlossaryBackdrop.classList.add("hidden"); } });
 
+function autosizeCourseMemo() {
+  const box = document.getElementById("courseMemoBox");
+  box.style.height = "auto";
+  box.style.height = Math.max(240, box.scrollHeight + 4) + "px";
+}
 let courseMemoTimer = null;
 document.getElementById("courseMemoBox").addEventListener("input", (e) => {
+  autosizeCourseMemo();
   if (!currentCourseId) return;
   clearTimeout(courseMemoTimer);
   const status = document.getElementById("courseMemoStatus");
