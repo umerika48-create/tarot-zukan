@@ -658,6 +658,16 @@
   .course-program-body .cp-desc { font-size:13px; line-height:1.7; color:var(--text-dim); }
   .course-memo-wrap { border-top:1px solid var(--border); padding-top:16px; }
   .course-memo-status { font-size:11px; color:var(--text-dim); margin-top:6px; height:14px; }
+  .cp-tap { cursor:text; }
+  .cp-tap:active { opacity:.7; }
+  .cp-inline-edit { grid-column:1 / -1; width:100%; display:flex; flex-direction:column; gap:8px; padding:12px; margin:4px 0; background:var(--surface-hover); border:1px solid var(--gold-dim); border-radius:12px; }
+  .cp-inline-edit .ce-input, .cp-inline-edit .ce-textarea { width:100%; box-sizing:border-box; font-size:15px; line-height:1.7; }
+  .cp-inline-edit .ce-textarea { min-height:90px; resize:none; overflow:hidden; }
+  .cpe-btns { display:flex; gap:8px; align-items:center; }
+  .cpe-btns button { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13.5px; cursor:pointer; }
+  .cpe-btns .save { background:var(--gold); border-color:var(--gold); color:#1a1a24; font-weight:600; }
+  .cpe-btns .del { margin-left:auto; color:var(--rose); }
+  .cp-add-row { display:block; width:100%; margin:10px 0 4px; padding:10px; border:1px dashed var(--gold-dim); border-radius:10px; background:transparent; color:var(--gold); font-size:13.5px; cursor:pointer; }
   #courseMemoBox {
     max-width:none; margin-top:10px; min-height:240px; padding:14px 16px;
     font-family:inherit; font-size:15px; line-height:1.9; letter-spacing:.02em;

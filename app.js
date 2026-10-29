@@ -2787,6 +2787,13 @@ function openCourseDetail(course) {
         </div>
       </div>`;
     setupRowMemo(row, course.id, rowIdx);
+    row.querySelectorAll(".course-program-time, .cp-title, .cp-desc").forEach(el => {
+      el.classList.add("cp-tap");
+      el.addEventListener("click", (e) => {
+        if (IS_OFFLINE_FILE || e.target.closest(".inline-glossary-label")) return;
+        startRowEdit(row, course.id, rowIdx);
+      });
+    });
 
     if (item.labels && item.labels.length) {
       row.querySelectorAll(".inline-glossary-label").forEach(span => {
@@ -2797,6 +2804,19 @@ function openCourseDetail(course) {
 
     program.appendChild(row);
   });
+
+  if (!IS_OFFLINE_FILE) {
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "cp-add-row"; add.textContent = "＋ 項目を追加";
+    add.addEventListener("click", () => {
+      const ed = makeRowEditor(null, null, () => { ed.el.remove(); add.style.display = ""; });
+      add.style.display = "none";
+      add.after(ed.el);
+      ed.focus();
+      ed.onSave = (item) => saveCourseProgram(course.id, (prog) => prog.push(item));
+    });
+    program.appendChild(add);
+  }
 
   const memoBox = document.getElementById("courseMemoBox");
   const memoStatus = document.getElementById("courseMemoStatus");
@@ -2832,6 +2852,69 @@ function autosizeCourseMemo() {
   box.style.height = "auto";
   box.style.height = Math.max(240, box.scrollHeight + 4) + "px";
 }
+function makeRowEditor(item, _unused, onCancel) {
+  const el = document.createElement("div");
+  el.className = "cp-inline-edit";
+  el.innerHTML = `
+    <input type="text" class="ce-input cpe-time" placeholder="時間（例 19:00〜19:05）">
+    <input type="text" class="ce-input cpe-title" placeholder="見出し">
+    <textarea class="ce-textarea cpe-desc" placeholder="説明"></textarea>
+    <div class="cpe-btns"><button type="button" class="save">保存</button><button type="button" class="cancel">キャンセル</button><button type="button" class="del">削除</button></div>`;
+  const t = el.querySelector(".cpe-time"), ti = el.querySelector(".cpe-title"), d = el.querySelector(".cpe-desc");
+  if (item) { t.value = item.time || ""; ti.value = item.title || ""; d.value = item.desc || ""; }
+  const grow = () => { d.style.height = "auto"; d.style.height = Math.max(90, d.scrollHeight + 4) + "px"; };
+  d.addEventListener("input", grow);
+  const api = { el, onSave: null, onDelete: null, focus() { grow(); ti.focus(); } };
+  el.querySelector(".cancel").addEventListener("click", onCancel);
+  el.querySelector(".save").addEventListener("click", () => {
+    const btn = el.querySelector(".save"); btn.disabled = true; btn.textContent = "保存中…";
+    Promise.resolve(api.onSave({ time: t.value.trim(), title: ti.value.trim(), desc: d.value })).then(ok => {
+      if (ok === false) { btn.disabled = false; btn.textContent = "保存"; }
+    });
+  });
+  const del = el.querySelector(".del");
+  if (!item) del.style.display = "none";
+  del.addEventListener("click", () => api.onDelete && api.onDelete());
+  setTimeout(grow, 0);
+  return api;
+}
+
+function saveCourseProgram(courseId, mutate) {
+  const cur = getCourseById(courseId);
+  if (!cur) return Promise.resolve(false);
+  const course = JSON.parse(JSON.stringify(cur));
+  course.program = course.program || [];
+  mutate(course.program);
+  return coursePost({ course, isNew: false }, "保存に失敗しました。通信状態を確認してもう一度お試しください。").then(ok => {
+    if (!ok) return false;
+    renderCourseList();
+    openCourseDetail(getCourseById(courseId) || course);
+    return true;
+  });
+}
+
+function startRowEdit(row, courseId, rowIdx) {
+  if (row.querySelector(".cp-inline-edit")) return;
+  const course = getCourseById(courseId);
+  const item = course && course.program && course.program[rowIdx];
+  if (!item) return;
+  const body = row.querySelector(".course-program-body");
+  const timeEl = row.querySelector(".course-program-time");
+  const show = (v) => { body.style.display = v; timeEl.style.display = v; };
+  const ed = makeRowEditor(item, null, () => { ed.el.remove(); show(""); });
+  ed.onSave = (n) => saveCourseProgram(courseId, (prog) => {
+    const old = prog[rowIdx] || {};
+    prog[rowIdx] = Object.assign({}, old, n);
+  });
+  ed.onDelete = () => {
+    if (!confirm("この項目を削除しますか？\n（下にある項目のMEMOの位置がずれることがあります）")) return;
+    saveCourseProgram(courseId, (prog) => { prog.splice(rowIdx, 1); });
+  };
+  show("none");
+  row.appendChild(ed.el);
+  ed.focus();
+}
+
 let courseMemoTimer = null;
 document.getElementById("courseMemoBox").addEventListener("input", (e) => {
   autosizeCourseMemo();
