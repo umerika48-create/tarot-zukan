@@ -38,9 +38,24 @@ CARD_CX, CARD_CY = 285, 456   # カードの中心位置（1080px基準）
 
 CARD_ANGLE = 5        # カードの傾き（度）。0でまっすぐ
 
-def build(card_id, card_h=None, cx=None, cy=None, angle=None):
+ANGEL_SCALE = 1.0      # さくらこちゃんの大きさ（1.0＝そのまま、0.85＝少し小さく）
+ANGEL_ANCHOR = (520, 985)   # 小さくするときの、動かさない点（1080px基準。左下＝手がカードに重なる位置を保つ）
+
+def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None):
     ensure_font()
     base = Image.open(os.path.join(HERE, "base_clean2.png")).convert("RGBA")   # 英語の文字を消した土台
+    # --- さくらこちゃん（天使）：切り抜いて、大きさを変えられるようにする ---
+    am = Image.open(os.path.join(HERE, "angel_mask.png")).convert("L").filter(ImageFilter.GaussianBlur(0.8))
+    sc = ANGEL_SCALE if angel_scale is None else angel_scale
+    angel_full = base.copy(); angel_full.putalpha(am)
+    if abs(sc - 1.0) > 1e-6:
+        ax, ay = ANGEL_ANCHOR
+        nw = int(base.size[0] * sc)
+        small = angel_full.resize((nw, nw), Image.LANCZOS)
+        angel_full = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        angel_full.alpha_composite(small, (int(ax - ax * sc), int(ay - ay * sc)))
+        bg = Image.open(os.path.join(HERE, "bg_noangel.png")).convert("RGBA")   # 天使を消した背景
+        base = bg; base.alpha_composite(angel_full)
     # --- 文字 ---
     sh = Image.new("RGBA", base.size, (0, 0, 0, 0)); tx = Image.new("RGBA", base.size, (0, 0, 0, 0))
     ds = ImageDraw.Draw(sh); dt = ImageDraw.Draw(tx)
@@ -91,21 +106,20 @@ def build(card_id, card_h=None, cx=None, cy=None, angle=None):
     for (x, y, r) in [(135, 300, 30), (95, 400, 17), (445, 318, 18), (460, 585, 34), (432, 440, 14), (120, 640, 16)]:
         sparkle(x, y, r)
     # --- さくらこちゃん（天使）をカードより手前に。カードと重なる部分だけ、天使を上に描き直す ---
-    am = Image.open(os.path.join(HERE, "angel_mask.png")).convert("L").filter(ImageFilter.GaussianBlur(0.8))
     cardzone = Image.new("L", res.size, 0); cardzone.paste(rot.split()[3].point(lambda v: 255 if v > 0 else 0), pos)
     cardzone = cardzone.filter(ImageFilter.MaxFilter(41))   # カードの影が天使にかからないよう、影の分も広げる
     from PIL import ImageChops
-    angel = base.copy(); angel.putalpha(ImageChops.multiply(am, cardzone))
+    angel = angel_full.copy(); angel.putalpha(ImageChops.multiply(angel_full.split()[3], cardzone))
     res.alpha_composite(angel)
     return res.convert("RGB").resize((1400, 1400), Image.LANCZOS)   # アプリの推奨サイズ
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--angle", type=float); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
+    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--angle", type=float); ap.add_argument("--angel-scale", type=float); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, "out", a.card_id + ".png")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    build(a.card_id, a.card_h, a.cx, a.cy, a.angle).save(out); print("作成:", out)
+    build(a.card_id, a.card_h, a.cx, a.cy, a.angle, a.angel_scale).save(out); print("作成:", out)
     if a.upload:
         name = urllib.parse.quote(os.path.basename(out))
         r = subprocess.run(["curl", "-sS", "-m", "90", "-X", "POST", f"{APP}/api/radio-covers?id={a.card_id}",
