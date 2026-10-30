@@ -33,13 +33,13 @@ def ensure_font():
 def width(t, f, sp):
     return sum(f.getlength(c) + sp for c in t) - sp
 
-CARD_H = 370          # カードの高さ（1080px基準）。大きくするときはここ
-CARD_CX, CARD_CY = 285, 456   # カードの中心位置（1080px基準）
+CARD_H = 740          # カードの高さ（1080px基準）。2026-10-30に、約2倍の新デザインに変更（旧は370）
+CARD_CX, CARD_CY = 345, 430   # カードの中心位置（1080px基準。旧は285, 456）
 
-CARD_ANGLE = 5        # カードの傾き（度）。0でまっすぐ
+CARD_ANGLE = 0        # カードの傾き（度）。0でまっすぐ
 
-ANGEL_SCALE = 1.0      # さくらこちゃんの大きさ（1.0＝そのまま、0.85＝少し小さく）
-ANGEL_SHIFT = (0, 0)       # 小さくしたあとの、さくらこちゃんの移動（右へ・下へ。1080px基準）
+ANGEL_SCALE = 0.85     # さくらこちゃんの大きさ（1.0＝そのまま、0.85＝少し小さく）
+ANGEL_SHIFT = (45, -124)       # 小さくしたあとの、さくらこちゃんの移動（右へ・下へ。1080px基準）
 ANGEL_ANCHOR = (520, 985)   # 小さくするときの、動かさない点（1080px基準。左下＝手がカードに重なる位置を保つ）
 
 def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None, angel_dx=None, angel_dy=None):

@@ -735,6 +735,7 @@
   .rpost-ta { width:100%; box-sizing:border-box; background:var(--bg); color:var(--text); border:1px solid var(--gold-dim); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:14px; line-height:1.7; resize:vertical; }
   .rpost-btns { display:flex; gap:8px; margin-top:6px; }
   .radio-cover { display:flex; gap:14px; align-items:center; margin:0 0 18px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .radio-cover-old { margin-top:-8px; background:transparent; border-style:dashed; }
   .radio-cover.drag { border-color:var(--gold); background:var(--surface-hover); }
   .rc-thumb { flex:0 0 auto; width:108px; height:108px; border-radius:10px; border:1px dashed var(--gold-dim); background:var(--bg); display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; line-height:1.5; color:var(--text-dim); overflow:hidden; padding:0; cursor:pointer; font-family:inherit; }
   .rc-thumb.has { border:1px solid var(--border); cursor:zoom-in; }
@@ -1175,6 +1176,7 @@
         <div class="radio-body">
           <div class="radio-pub" id="radioPublished"></div>
           <div class="radio-cover" id="radioCover"></div>
+          <div class="radio-cover radio-cover-old" id="radioCoverOld" style="display:none;"></div>
           <div class="radio-post" id="radioPost"></div>
           <input type="file" id="radioCoverFile" accept="image/png,image/jpeg,image/webp" hidden>
           <div class="radio-script" id="radioScript"></div>

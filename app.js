@@ -440,7 +440,23 @@ function radioCoverUrl(id, m) {
 function radioFmtBytes(n) {
   return n >= 1048576 ? (n / 1048576).toFixed(1) + "MB" : Math.max(1, Math.round(n / 1024)) + "KB";
 }
+// 旧デザインのカバー（キー「<カードID>-old」で、同じAPIに保存。デザインを変えたとき、前の画像を消さずに残すため）
+function renderRadioCoverOld() {
+  const box = document.getElementById("radioCoverOld");
+  if (!box) return;
+  const key = CARDS[radioIdx].id + "-old", m = radioCovers[key];
+  if (!m || (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE)) { box.style.display = "none"; box.innerHTML = ""; return; }
+  box.style.display = "";
+  const ext = RADIO_COVER_EXT[m.type] || "";
+  box.innerHTML =
+    `<button type="button" class="rc-thumb has" data-act="old-view" title="大きく見る"><img src="${escapeHtml(radioCoverUrl(key, m))}" alt="第${radioIdx + 1}回の旧カバー画像" loading="lazy"></button>` +
+    `<div class="rc-main"><div class="rc-title">旧デザインのカバー（第${radioIdx + 1}回）</div>` +
+    `<div class="rc-info">以前のデザインです。残してあります。${ext.toUpperCase()} ・ ${radioFmtBytes(m.size || 0)}</div>` +
+    `<div class="rc-btns"><button type="button" class="radio-btn" data-act="old-photo">📱 写真に保存</button>` +
+    `<button type="button" class="radio-btn" data-act="old-dl">ダウンロード</button></div></div>`;
+}
 function renderRadioCover() {
+  renderRadioCoverOld();
   const box = document.getElementById("radioCover");
   if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
   box.style.display = "";
@@ -498,9 +514,9 @@ function radioCoverUpload(file) {
 // 「写真に保存」：iPhoneでは、共有シート（Web Share API）を開き、「画像を保存」でカメラロールに入る。
 // ボタンを押した直後に共有シートを開く必要があるため、画像は表示時に先に読み込んでおく（radioCoverBlobs）。
 const radioCoverBlobs = {}; // { 画像URL: Blob }
-function radioCoverFileName(c, m) {
+function radioCoverFileName(c, m, key) {
   const safe = String(c.name_jp || c.id).replace(/[\\/:*?"<>|]/g, "");
-  return "第" + (radioIdx + 1) + "回_" + safe + "_カバー." + (RADIO_COVER_EXT[m.type] || "png");
+  return "第" + (radioIdx + 1) + "回_" + safe + "_カバー" + (key && /-old$/.test(key) ? "_旧デザイン" : "") + "." + (RADIO_COVER_EXT[m.type] || "png");
 }
 function radioCoverPrefetch() {
   const c = CARDS[radioIdx], m = radioCovers[c.id];
@@ -509,12 +525,12 @@ function radioCoverPrefetch() {
   if (radioCoverBlobs[url]) return;
   fetch(url).then(r => r.ok ? r.blob() : null).then(b => { if (b) radioCoverBlobs[url] = b; }).catch(() => {});
 }
-function radioCoverToPhotos() {
-  const c = CARDS[radioIdx], m = radioCovers[c.id];
+function radioCoverToPhotos(key) {
+  const c = CARDS[radioIdx]; key = key || c.id; const m = radioCovers[key];
   if (!m) return;
-  const url = radioCoverUrl(c.id, m);
+  const url = radioCoverUrl(key, m);
   const share = blob => {
-    const file = new File([blob], radioCoverFileName(c, m), { type: m.type || blob.type || "image/png" });
+    const file = new File([blob], radioCoverFileName(c, m, key), { type: m.type || blob.type || "image/png" });
     if (!(navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share)) return Promise.reject(new Error("noshare"));
     return navigator.share({ files: [file] });
   };
@@ -526,14 +542,13 @@ function radioCoverToPhotos() {
   const p = cached ? share(cached) : fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error("dl"))).then(b => { radioCoverBlobs[url] = b; return share(b); });
   p.catch(err => { if (err && err.name === "AbortError") return; fallback(); }); // 共有シートを閉じただけのときは、何もしない
 }
-function radioCoverDownload() {
-  const c = CARDS[radioIdx], m = radioCovers[c.id];
+function radioCoverDownload(key) {
+  const c = CARDS[radioIdx]; key = key || c.id; const m = radioCovers[key];
   if (!m) return;
-  fetch(radioCoverUrl(c.id, m)).then(r => r.ok ? r.blob() : Promise.reject(new Error("dl"))).then(blob => {
+  fetch(radioCoverUrl(key, m)).then(r => r.ok ? r.blob() : Promise.reject(new Error("dl"))).then(blob => {
     const a = document.createElement("a");
-    const safe = String(c.name_jp || c.id).replace(/[\\/:*?"<>|]/g, "");
     a.href = URL.createObjectURL(blob);
-    a.download = "第" + (radioIdx + 1) + "回_" + safe + "_カバー." + (RADIO_COVER_EXT[m.type] || "png");
+    a.download = radioCoverFileName(c, m, key);
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   }).catch(() => alert("ダウンロードできませんでした。通信を確認して、もう一度お試しください。"));
@@ -563,6 +578,15 @@ function radioCoverDelete() {
     else if (act === "view") { const c = CARDS[radioIdx]; window.open(radioCoverUrl(c.id, radioCovers[c.id]), "_blank"); }
   });
   input.addEventListener("change", () => { const f = input.files && input.files[0]; input.value = ""; radioCoverUpload(f); });
+  const oldBox = document.getElementById("radioCoverOld");
+  if (oldBox) oldBox.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    const key = CARDS[radioIdx].id + "-old";
+    if (b.dataset.act === "old-photo") radioCoverToPhotos(key);
+    else if (b.dataset.act === "old-dl") radioCoverDownload(key);
+    else if (b.dataset.act === "old-view") window.open(radioCoverUrl(key, radioCovers[key]), "_blank");
+  });
   ["dragenter", "dragover"].forEach(t => box.addEventListener(t, e => { e.preventDefault(); box.classList.add("drag"); }));
   ["dragleave", "drop"].forEach(t => box.addEventListener(t, e => { e.preventDefault(); box.classList.remove("drag"); }));
   box.addEventListener("drop", e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) radioCoverUpload(f); });
