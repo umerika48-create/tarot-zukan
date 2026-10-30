@@ -33,7 +33,10 @@ def ensure_font():
 def width(t, f, sp):
     return sum(f.getlength(c) + sp for c in t) - sp
 
-def build(card_id):
+CARD_H = 370          # カードの高さ（1080px基準）。大きくするときはここ
+CARD_CX, CARD_CY = 285, 456   # カードの中心位置（1080px基準）
+
+def build(card_id, card_h=None, cx=None, cy=None):
     ensure_font()
     base = Image.open(os.path.join(HERE, "base_clean.png")).convert("RGBA")
     # --- 文字 ---
@@ -61,7 +64,7 @@ def build(card_id):
     cp = os.path.join(ROOT, "images", card_id + ".jpg")
     if not os.path.exists(cp):
         sys.exit("カード画像が見つかりません: " + cp)
-    H = 370; card = Image.open(cp).convert("RGB"); W = int(card.size[0] * H / card.size[1])
+    H = card_h or CARD_H; card = Image.open(cp).convert("RGB"); W = int(card.size[0] * H / card.size[1])
     card = card.resize((W, H), Image.LANCZOS).convert("RGBA")
     rm = Image.new("L", (W, H), 0); ImageDraw.Draw(rm).rounded_rectangle((0, 0, W - 1, H - 1), radius=12, fill=255); card.putalpha(rm)
     pad = 7; bordered = Image.new("RGBA", (W + 2 * pad, H + 2 * pad), (0, 0, 0, 0))
@@ -69,7 +72,7 @@ def build(card_id):
     white = Image.new("RGBA", bordered.size, (255, 255, 255, 255)); white.putalpha(bm)
     bordered.alpha_composite(white); bordered.alpha_composite(card, (pad, pad))
     rot = bordered.rotate(5, expand=True, resample=Image.BICUBIC)
-    pos = (285 - rot.size[0] // 2, 456 - rot.size[1] // 2)
+    pos = ((cx or CARD_CX) - rot.size[0] // 2, (cy or CARD_CY) - rot.size[1] // 2)
     shl = Image.new("RGBA", res.size, (0, 0, 0, 0))
     shd = Image.new("RGBA", rot.size, (120, 20, 70, 255)); shd.putalpha(rot.split()[3].point(lambda v: int(v * 0.45)))
     shl.alpha_composite(shd, (pos[0] + 6, pos[1] + 10)); shl = shl.filter(ImageFilter.GaussianBlur(9))
@@ -89,11 +92,11 @@ def build(card_id):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--upload", action="store_true")
+    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, "out", a.card_id + ".png")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    build(a.card_id).save(out); print("作成:", out)
+    build(a.card_id, a.card_h, a.cx, a.cy).save(out); print("作成:", out)
     if a.upload:
         name = urllib.parse.quote(os.path.basename(out))
         r = subprocess.run(["curl", "-sS", "-m", "90", "-X", "POST", f"{APP}/api/radio-covers?id={a.card_id}",
