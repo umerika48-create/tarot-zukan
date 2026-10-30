@@ -36,7 +36,9 @@ def width(t, f, sp):
 CARD_H = 370          # カードの高さ（1080px基準）。大きくするときはここ
 CARD_CX, CARD_CY = 285, 456   # カードの中心位置（1080px基準）
 
-def build(card_id, card_h=None, cx=None, cy=None):
+CARD_ANGLE = 5        # カードの傾き（度）。0でまっすぐ
+
+def build(card_id, card_h=None, cx=None, cy=None, angle=None):
     ensure_font()
     base = Image.open(os.path.join(HERE, "base_clean2.png")).convert("RGBA")   # 英語の文字を消した土台
     # --- 文字 ---
@@ -71,7 +73,7 @@ def build(card_id, card_h=None, cx=None, cy=None):
     bm = Image.new("L", bordered.size, 0); ImageDraw.Draw(bm).rounded_rectangle((0, 0, bordered.size[0] - 1, bordered.size[1] - 1), radius=16, fill=255)
     white = Image.new("RGBA", bordered.size, (255, 255, 255, 255)); white.putalpha(bm)
     bordered.alpha_composite(white); bordered.alpha_composite(card, (pad, pad))
-    rot = bordered.rotate(5, expand=True, resample=Image.BICUBIC)
+    rot = bordered.rotate(CARD_ANGLE if angle is None else angle, expand=True, resample=Image.BICUBIC)
     pos = ((cx or CARD_CX) - rot.size[0] // 2, (cy or CARD_CY) - rot.size[1] // 2)
     shl = Image.new("RGBA", res.size, (0, 0, 0, 0))
     shd = Image.new("RGBA", rot.size, (120, 20, 70, 255)); shd.putalpha(rot.split()[3].point(lambda v: int(v * 0.45)))
@@ -99,11 +101,11 @@ def build(card_id, card_h=None, cx=None, cy=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
+    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--angle", type=float); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, "out", a.card_id + ".png")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    build(a.card_id, a.card_h, a.cx, a.cy).save(out); print("作成:", out)
+    build(a.card_id, a.card_h, a.cx, a.cy, a.angle).save(out); print("作成:", out)
     if a.upload:
         name = urllib.parse.quote(os.path.basename(out))
         r = subprocess.run(["curl", "-sS", "-m", "90", "-X", "POST", f"{APP}/api/radio-covers?id={a.card_id}",
