@@ -39,21 +39,23 @@ CARD_CX, CARD_CY = 285, 456   # カードの中心位置（1080px基準）
 CARD_ANGLE = 5        # カードの傾き（度）。0でまっすぐ
 
 ANGEL_SCALE = 1.0      # さくらこちゃんの大きさ（1.0＝そのまま、0.85＝少し小さく）
+ANGEL_SHIFT = (0, 0)       # 小さくしたあとの、さくらこちゃんの移動（右へ・下へ。1080px基準）
 ANGEL_ANCHOR = (520, 985)   # 小さくするときの、動かさない点（1080px基準。左下＝手がカードに重なる位置を保つ）
 
-def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None):
+def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None, angel_dx=None, angel_dy=None):
     ensure_font()
     base = Image.open(os.path.join(HERE, "base_clean2.png")).convert("RGBA")   # 英語の文字を消した土台
     # --- さくらこちゃん（天使）：切り抜いて、大きさを変えられるようにする ---
     am = Image.open(os.path.join(HERE, "angel_mask.png")).convert("L").filter(ImageFilter.GaussianBlur(0.8))
     sc = ANGEL_SCALE if angel_scale is None else angel_scale
     angel_full = base.copy(); angel_full.putalpha(am)
-    if abs(sc - 1.0) > 1e-6:
+    dx = ANGEL_SHIFT[0] if angel_dx is None else angel_dx; dy = ANGEL_SHIFT[1] if angel_dy is None else angel_dy
+    if abs(sc - 1.0) > 1e-6 or dx or dy:
         ax, ay = ANGEL_ANCHOR
         nw = int(base.size[0] * sc)
         small = angel_full.resize((nw, nw), Image.LANCZOS)
         angel_full = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        angel_full.alpha_composite(small, (int(ax - ax * sc), int(ay - ay * sc)))
+        angel_full.alpha_composite(small, (int(ax - ax * sc + dx), int(ay - ay * sc + dy)))
         bg = Image.open(os.path.join(HERE, "bg_noangel.png")).convert("RGBA")   # 天使を消した背景
         base = bg; base.alpha_composite(angel_full)
     # --- 文字 ---
@@ -115,11 +117,11 @@ def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--angle", type=float); ap.add_argument("--angel-scale", type=float); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
+    ap.add_argument("card_id"); ap.add_argument("--out"); ap.add_argument("--card-h", type=int); ap.add_argument("--cx", type=int); ap.add_argument("--angle", type=float); ap.add_argument("--angel-scale", type=float); ap.add_argument("--angel-dx", type=int); ap.add_argument("--angel-dy", type=int); ap.add_argument("--cy", type=int); ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, "out", a.card_id + ".png")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    build(a.card_id, a.card_h, a.cx, a.cy, a.angle, a.angel_scale).save(out); print("作成:", out)
+    build(a.card_id, a.card_h, a.cx, a.cy, a.angle, a.angel_scale, a.angel_dx, a.angel_dy).save(out); print("作成:", out)
     if a.upload:
         name = urllib.parse.quote(os.path.basename(out))
         r = subprocess.run(["curl", "-sS", "-m", "90", "-X", "POST", f"{APP}/api/radio-covers?id={a.card_id}",
