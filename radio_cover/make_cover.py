@@ -38,7 +38,7 @@ CARD_CX, CARD_CY = 285, 456   # カードの中心位置（1080px基準）
 
 def build(card_id, card_h=None, cx=None, cy=None):
     ensure_font()
-    base = Image.open(os.path.join(HERE, "base_clean.png")).convert("RGBA")
+    base = Image.open(os.path.join(HERE, "base_clean2.png")).convert("RGBA")   # 英語の文字を消した土台
     # --- 文字 ---
     sh = Image.new("RGBA", base.size, (0, 0, 0, 0)); tx = Image.new("RGBA", base.size, (0, 0, 0, 0))
     ds = ImageDraw.Draw(sh); dt = ImageDraw.Draw(tx)
@@ -88,6 +88,13 @@ def build(card_id, card_h=None, cx=None, cy=None):
         res.alpha_composite(im, (int(cx - im.size[0] / 2), int(cy - im.size[1] / 2)))
     for (x, y, r) in [(135, 300, 30), (95, 400, 17), (445, 318, 18), (460, 585, 34), (432, 440, 14), (120, 640, 16)]:
         sparkle(x, y, r)
+    # --- さくらこちゃん（天使）をカードより手前に。カードと重なる部分だけ、天使を上に描き直す ---
+    am = Image.open(os.path.join(HERE, "angel_mask.png")).convert("L").filter(ImageFilter.GaussianBlur(0.8))
+    cardzone = Image.new("L", res.size, 0); cardzone.paste(rot.split()[3].point(lambda v: 255 if v > 0 else 0), pos)
+    cardzone = cardzone.filter(ImageFilter.MaxFilter(41))   # カードの影が天使にかからないよう、影の分も広げる
+    from PIL import ImageChops
+    angel = base.copy(); angel.putalpha(ImageChops.multiply(am, cardzone))
+    res.alpha_composite(angel)
     return res.convert("RGB").resize((1400, 1400), Image.LANCZOS)   # アプリの推奨サイズ
 
 def main():
