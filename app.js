@@ -3130,12 +3130,13 @@ renderGrid();
     Promise.all([
       get("/api/symbol-notes"), get("/api/added-symbols"), get("/api/memos"), get("/api/diamond-notes"),
       get("/api/courses"), get("/api/context-notes"), get("/api/course-row-memos"),
-      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos"), get("/api/radio-scripts"), get("/api/radio-posts")
+      get("/api/journal"), get("/api/memo-folders"), get("/api/memo-notes"), get("/api/course-memos"), get("/api/radio-scripts"), get("/api/radio-posts"),
+      get("/api/radio-memo-folders"), get("/api/radio-memo-notes")
     ])
-      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos, radioScripts, radioPostsData]) => {
+      .then(([symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos, journal, memoFolders, memoNotes, courseMemos, radioScripts, radioPostsData, radioMemoFolders, radioMemoNotes]) => {
         const backup = {
           symbolNotes, addedSymbols, memos, diamondNotes, courses, contextNotes, courseRowMemos,
-          journal, memoFolders, memoNotes, courseMemos, radioScripts, radioPosts: radioPostsData,
+          journal, memoFolders, memoNotes, courseMemos, radioScripts, radioPosts: radioPostsData, radioMemoFolders, radioMemoNotes,
           exportedAt: new Date().toISOString()
         };
         const blob = new Blob([JSON.stringify(backup, null, 1)], { type: "application/json" });
@@ -3557,3 +3558,195 @@ if (ZUKAN_IS_OFFLINE_FILE) {
   const migrateBtn = document.getElementById("journalMigrateBtn");
   if (migrateBtn) migrateBtn.addEventListener("click", migrateLocalDataToCloud);
 }
+
+
+// ---- ラジオ専用メモ：フォルダ＋タイトル付きメモ（「記録」タブのメモとは別データ） ----
+(function setupRadioMemo() {
+  const btn = document.getElementById("radioMemoBtn");
+  if (!btn) return;
+  if (ZUKAN_IS_OFFLINE_FILE) { btn.style.display = "none"; return; }
+  const $ = (id) => document.getElementById(id);
+  const backdrop = $("radioMemoBackdrop");
+  let folders = [], notes = [], loaded = false, loadFailed = false;
+  let curFolder = null;      // 一覧で開いているフォルダid（nullなら全体）
+  let editing = null;        // 編集中のメモ {id, ...}
+  let saveTimer = null, dirty = false;
+
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const msg = (t) => { $("rmMsg").textContent = t || ""; };
+
+  function load() {
+    return zukanVersionReady.then(() => Promise.all([
+      fetch("/api/radio-memo-folders", { cache: "no-store" }).then(r => { if (!r.ok) throw 0; return r.json(); }),
+      fetch("/api/radio-memo-notes", { cache: "no-store" }).then(r => { if (!r.ok) throw 0; return r.json(); })
+    ])).then(([f, n]) => {
+      folders = Array.isArray(f) ? f : []; notes = Array.isArray(n) ? n : [];
+      loaded = true; loadFailed = false;
+    }).catch(() => { loadFailed = true; });
+  }
+
+  function show(which) {
+    $("rmList").style.display = which === "list" ? "" : "none";
+    $("rmEdit").style.display = which === "edit" ? "" : "none";
+  }
+
+  function fmt(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return (d.getMonth() + 1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function noteRow(n) {
+    const row = document.createElement("div");
+    row.className = "rm-item";
+    row.innerHTML = '<span class="rm-ic">&#128221;</span><div class="rm-main"><div class="rm-name"></div><div class="rm-sub"></div></div><span class="rm-count"></span>';
+    row.querySelector(".rm-name").textContent = n.title || "（タイトルなし）";
+    row.querySelector(".rm-sub").textContent = (n.text || "").replace(/\s+/g, " ").slice(0, 60);
+    row.querySelector(".rm-count").textContent = fmt(n.updatedAt);
+    row.addEventListener("click", () => openEdit(n));
+    return row;
+  }
+
+  function renderList() {
+    show("list");
+    const items = $("rmItems");
+    items.innerHTML = "";
+    $("rmBack").style.display = curFolder ? "" : "none";
+    const cur = folders.find(f => f.id === curFolder);
+    $("rmHead").textContent = cur ? "📁 " + cur.name : "ラジオのメモ";
+    $("rmAddFolder").style.display = curFolder ? "none" : "";
+    if (loadFailed) { msg("読み込めませんでした。通信を確認してください。"); $("rmEmpty").style.display = "none"; return; }
+    msg("");
+    const sorted = (arr) => arr.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    let count = 0;
+    if (!curFolder) {
+      folders.forEach(f => {
+        const c = notes.filter(n => n.folderId === f.id).length;
+        const row = document.createElement("div");
+        row.className = "rm-item";
+        row.innerHTML = '<span class="rm-ic">&#128193;</span><div class="rm-main"><div class="rm-name"></div></div><span class="rm-count"></span><button type="button" class="rm-mini ren" title="名前を変える">&#9998;</button><button type="button" class="rm-mini del" title="フォルダを削除">&times;</button>';
+        row.querySelector(".rm-name").textContent = f.name;
+        row.querySelector(".rm-count").textContent = c + "件";
+        row.addEventListener("click", () => { curFolder = f.id; renderList(); });
+        row.querySelector(".ren").addEventListener("click", (e) => {
+          e.stopPropagation();
+          const name = prompt("フォルダの名前", f.name);
+          if (name === null) return;
+          post("/api/radio-memo-folders", { folder: { id: f.id, name: name.trim() || "無題フォルダ" } }, "folders");
+        });
+        row.querySelector(".del").addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!confirm("フォルダ「" + f.name + "」を削除しますか？\n中のメモ" + c + "件も一緒に消えます。")) return;
+          post("/api/radio-memo-folders", { delete: true, id: f.id }, "folders", true);
+        });
+        items.appendChild(row);
+        count++;
+      });
+    }
+    sorted(notes.filter(n => (n.folderId || "") === (curFolder || ""))).forEach(n => { items.appendChild(noteRow(n)); count++; });
+    $("rmEmpty").style.display = count ? "none" : "block";
+  }
+
+  function post(url, body, key, reloadNotes) {
+    return zukanPost(url, body).then(d => {
+      if (!d || !d.ok) throw new Error("save");
+      if (d.folders) folders = d.folders;
+      if (d.notes) notes = d.notes;
+      if (reloadNotes && !d.notes) return load();
+    }).then(() => { if (editing === null) renderList(); return true; })
+      .catch(err => { if (!(err && err.zukanStale)) msg("保存に失敗しました。通信を確認してもう一度お試しください。"); return false; });
+  }
+
+  // ---- 編集 ----
+  const ta = () => $("rmText");
+  const grow = () => { const t = ta(); t.style.height = "auto"; t.style.height = Math.max(280, t.scrollHeight + 4) + "px"; };
+
+  function fillFolderSelect(sel) {
+    const s = $("rmFolder");
+    s.innerHTML = "";
+    const o0 = document.createElement("option"); o0.value = ""; o0.textContent = "フォルダなし"; s.appendChild(o0);
+    folders.forEach(f => { const o = document.createElement("option"); o.value = f.id; o.textContent = "📁 " + f.name; s.appendChild(o); });
+    s.value = sel || "";
+  }
+
+  function openEdit(n) {
+    editing = n ? Object.assign({}, n) : { id: newId(), folderId: curFolder || "", title: "", text: "", isNew: true };
+    $("rmHead").textContent = n ? "メモを編集" : "新しいメモ";
+    $("rmTitle").value = editing.title || "";
+    $("rmText").value = editing.text || "";
+    fillFolderSelect(editing.folderId);
+    $("rmStatus").textContent = "";
+    $("rmDelNote").style.display = n ? "" : "none";
+    dirty = false;
+    show("edit");
+    grow();
+    if (!n) $("rmTitle").focus();
+  }
+
+  function saveNow() {
+    clearTimeout(saveTimer);
+    if (!editing || !dirty) return Promise.resolve(true);
+    const note = { id: editing.id, folderId: $("rmFolder").value, title: $("rmTitle").value.trim(), text: $("rmText").value };
+    if (!note.title && !note.text.trim() && editing.isNew) { dirty = false; return Promise.resolve(true); }
+    dirty = false;
+    $("rmStatus").textContent = "保存中…";
+    return zukanPost("/api/radio-memo-notes", { note }).then(d => {
+      if (!d || !d.ok) throw new Error("save");
+      notes = d.notes || notes;
+      editing.isNew = false;
+      $("rmDelNote").style.display = "";
+      $("rmStatus").textContent = "保存しました";
+      setTimeout(() => { if ($("rmStatus").textContent === "保存しました") $("rmStatus").textContent = ""; }, 1500);
+      return true;
+    }).catch(err => {
+      dirty = true;
+      if (!(err && err.zukanStale)) $("rmStatus").textContent = "保存に失敗しました";
+      return false;
+    });
+  }
+
+  function touch() { dirty = true; $("rmStatus").textContent = ""; clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 700); }
+  ["rmTitle", "rmText", "rmFolder"].forEach(id => $(id).addEventListener("input", touch));
+  $("rmFolder").addEventListener("change", touch);
+  $("rmText").addEventListener("input", grow);
+
+  function backToList() {
+    saveNow().then(() => {
+      const f = editing && $("rmFolder").value;
+      editing = null;
+      if (f !== undefined && f !== null && f !== "") curFolder = f; else curFolder = null;
+      renderList();
+    });
+  }
+  $("rmEditBack").addEventListener("click", backToList);
+  $("rmDelNote").addEventListener("click", () => {
+    if (!editing || !confirm("このメモを削除しますか？")) return;
+    clearTimeout(saveTimer); dirty = false;
+    const id = editing.id; editing = null;
+    post("/api/radio-memo-notes", { delete: true, id }, "notes");
+  });
+
+  $("rmAddNote").addEventListener("click", () => openEdit(null));
+  $("rmAddFolder").addEventListener("click", () => {
+    const name = prompt("フォルダの名前");
+    if (name === null) return;
+    post("/api/radio-memo-folders", { folder: { name: name.trim() || "無題フォルダ" } }, "folders");
+  });
+  $("rmBack").addEventListener("click", () => { curFolder = null; renderList(); });
+
+  function open() {
+    backdrop.classList.remove("hidden");
+    editing = null; curFolder = null;
+    show("list"); msg("");
+    $("rmItems").innerHTML = ""; $("rmEmpty").style.display = "none";
+    if (!loaded) { msg("読み込み中…"); load().then(() => { msg(""); renderList(); }); }
+    else { renderList(); load().then(() => { if (editing === null) renderList(); }); }
+  }
+  function close() {
+    saveNow().then(() => { editing = null; backdrop.classList.add("hidden"); });
+  }
+  btn.addEventListener("click", open);
+  $("radioMemoClose").addEventListener("click", close);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+  window.addEventListener("pagehide", () => { if (dirty) saveNow(); });
+})();

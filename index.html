@@ -658,6 +658,25 @@
   .course-program-body .cp-desc { font-size:13px; line-height:1.7; color:var(--text-dim); }
   .course-memo-wrap { border-top:1px solid var(--border); padding-top:16px; }
   .course-memo-status { font-size:11px; color:var(--text-dim); margin-top:6px; height:14px; }
+  .rm-modal { max-width:640px; }
+  .rm-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .rm-msg { font-size:12.5px; color:var(--rose); margin-bottom:8px; }
+  .rm-back { font-size:13px; color:var(--gold); cursor:pointer; margin:0 0 12px; }
+  .rm-empty { font-size:13.5px; color:var(--text-dim); padding:18px 4px; }
+  .rm-item { display:flex; align-items:center; gap:10px; padding:12px 14px; margin-bottom:8px; background:var(--surface-hover); border:1px solid var(--border); border-radius:12px; cursor:pointer; }
+  .rm-item:hover { border-color:var(--gold-dim); }
+  .rm-item .rm-ic { font-size:18px; flex-shrink:0; }
+  .rm-item .rm-main { flex:1; min-width:0; }
+  .rm-item .rm-name { font-size:15px; color:var(--text); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rm-item .rm-sub { font-size:12px; color:var(--text-dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rm-item .rm-count { font-size:12px; color:var(--text-dim); flex-shrink:0; }
+  .rm-item .rm-mini { width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-dim); cursor:pointer; flex-shrink:0; padding:0; font-size:13px; }
+  .rm-item .rm-mini:hover { color:var(--gold); border-color:var(--gold-dim); }
+  .rm-title { font-size:18px; font-weight:700; margin-bottom:8px; }
+  .rm-folder { width:100%; box-sizing:border-box; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:14px; margin-bottom:8px; }
+  .rm-text { min-height:280px; font-size:15.5px; line-height:1.9; resize:none; overflow:hidden; margin-top:0; }
+  .rm-editfoot { display:flex; align-items:center; justify-content:space-between; margin-top:10px; }
+  .rm-status { font-size:12px; color:var(--text-dim); }
   .cp-tap { cursor:text; }
   .cp-tap:active { opacity:.7; }
   .cp-inline-edit { grid-column:1 / -1; width:100%; display:flex; flex-direction:column; gap:8px; padding:12px; margin:4px 0; background:var(--surface-hover); border:1px solid var(--gold-dim); border-radius:12px; }
@@ -1168,6 +1187,7 @@
         <span class="radio-sp"></span>
         <label class="radio-ctl">文字 <input type="range" id="radioFont" min="18" max="44" step="2" value="28"></label>
         <label class="radio-ctl"><input type="checkbox" id="radioHideHead"> 見出しを隠す</label>
+        <button type="button" class="radio-btn" id="radioMemoBtn">&#128221; メモ</button>
         <button type="button" class="radio-btn" id="radioEditBtn">編集</button>
       </div>
       <div class="radio-hint">文章をタップすると、その行だけをその場で直せます。</div>
@@ -1541,6 +1561,29 @@
   </div>
 </div>
 
+<div class="course-edit-backdrop hidden" id="radioMemoBackdrop">
+  <div class="course-edit-modal rm-modal">
+    <button class="modal-close" id="radioMemoClose">&times;</button>
+    <div class="sp-h" id="rmHead">ラジオのメモ</div>
+    <div id="rmMsg" class="rm-msg"></div>
+    <div id="rmList">
+      <div class="rm-toolbar">
+        <button type="button" class="radio-btn save" id="rmAddNote">＋ メモを書く</button>
+        <button type="button" class="radio-btn" id="rmAddFolder">＋ フォルダを作る</button>
+      </div>
+      <div id="rmBack" class="rm-back" style="display:none;">‹ 全部のメモに戻る</div>
+      <div id="rmItems"></div>
+      <div id="rmEmpty" class="rm-empty" style="display:none;">まだメモがありません。「＋ メモを書く」から作れます。</div>
+    </div>
+    <div id="rmEdit" style="display:none;">
+      <div class="rm-back" id="rmEditBack">‹ 一覧に戻る</div>
+      <input type="text" id="rmTitle" class="ce-input rm-title" placeholder="タイトル">
+      <select id="rmFolder" class="rm-folder" aria-label="フォルダ"></select>
+      <textarea id="rmText" class="ce-textarea rm-text" placeholder="ここにメモを書きます（自動で保存されます）"></textarea>
+      <div class="rm-editfoot"><span id="rmStatus" class="rm-status"></span><button type="button" class="radio-btn danger" id="rmDelNote">このメモを削除</button></div>
+    </div>
+  </div>
+</div>
 <div class="course-edit-backdrop hidden" id="courseEditBackdrop">
   <div class="course-edit-modal">
     <button class="modal-close" id="courseEditClose">&times;</button>
