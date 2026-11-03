@@ -3588,6 +3588,14 @@ if (ZUKAN_IS_OFFLINE_FILE) {
   function show(which) {
     $("rmList").style.display = which === "list" ? "" : "none";
     $("rmEdit").style.display = which === "edit" ? "" : "none";
+    const modal = backdrop.querySelector(".rm-modal");
+    if (which === "edit") {
+      // いま開いているラジオの回のカードを、メモの左に大きく出す
+      const c = (typeof CARDS !== "undefined" && typeof radioIdx !== "undefined") ? CARDS[radioIdx] : null;
+      $("rmCard").style.display = c ? "" : "none";
+      if (c) $("rmCard").innerHTML = `<img src="${escHtml(c.img)}" alt="${escHtml(c.name_jp)}"><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escHtml(c.name_jp)}</div><div class="rs-en">${escHtml(c.name_en || "")}</div>`;
+      modal.classList.toggle("wide", !!c);
+    } else modal.classList.remove("wide");
   }
 
   function fmt(ts) {

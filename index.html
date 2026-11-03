@@ -672,6 +672,19 @@
   .rm-item .rm-count { font-size:12px; color:var(--text-dim); flex-shrink:0; }
   .rm-item .rm-mini { width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-dim); cursor:pointer; flex-shrink:0; padding:0; font-size:13px; }
   .rm-item .rm-mini:hover { color:var(--gold); border-color:var(--gold-dim); }
+  .rm-modal.wide { max-width:1000px; }
+  .rm-editgrid { display:grid; grid-template-columns: minmax(200px, 38%) 1fr; gap:20px; align-items:start; }
+  .rm-editgrid .rm-card { position:sticky; top:0; text-align:center; }
+  .rm-editgrid .rm-card img { width:100%; height:auto; max-height:calc(90vh - 250px); object-fit:contain; border-radius:10px; border:1px solid var(--border); display:block; }
+  .rm-editgrid .rm-card .rs-no { font-size:12px; color:var(--text-dim); margin-top:8px; }
+  .rm-editgrid .rm-card .rs-name { font-size:17px; color:var(--gold); font-weight:700; }
+  .rm-editgrid .rm-card .rs-en { font-size:12px; color:var(--text-dim); }
+  .rm-editmain { min-width:0; }
+  @media (max-width:700px) {
+    .rm-editgrid { grid-template-columns:1fr; }
+    .rm-editgrid .rm-card { position:static; }
+    .rm-editgrid .rm-card img { max-height:46vh; margin:0 auto; width:auto; max-width:100%; }
+  }
   .rm-title { font-size:18px; font-weight:700; margin-bottom:8px; }
   .rm-folder { width:100%; box-sizing:border-box; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:14px; margin-bottom:8px; }
   .rm-text { min-height:280px; font-size:15.5px; line-height:1.9; resize:none; overflow:hidden; margin-top:0; }
@@ -1577,10 +1590,15 @@
     </div>
     <div id="rmEdit" style="display:none;">
       <div class="rm-back" id="rmEditBack">‹ 一覧に戻る</div>
-      <input type="text" id="rmTitle" class="ce-input rm-title" placeholder="タイトル">
-      <select id="rmFolder" class="rm-folder" aria-label="フォルダ"></select>
-      <textarea id="rmText" class="ce-textarea rm-text" placeholder="ここにメモを書きます（自動で保存されます）"></textarea>
-      <div class="rm-editfoot"><span id="rmStatus" class="rm-status"></span><button type="button" class="radio-btn danger" id="rmDelNote">このメモを削除</button></div>
+      <div class="rm-editgrid">
+        <div class="rm-card" id="rmCard"></div>
+        <div class="rm-editmain">
+          <input type="text" id="rmTitle" class="ce-input rm-title" placeholder="タイトル">
+          <select id="rmFolder" class="rm-folder" aria-label="フォルダ"></select>
+          <textarea id="rmText" class="ce-textarea rm-text" placeholder="ここにメモを書きます（自動で保存されます）"></textarea>
+          <div class="rm-editfoot"><span id="rmStatus" class="rm-status"></span><button type="button" class="radio-btn danger" id="rmDelNote">このメモを削除</button></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
