@@ -713,28 +713,57 @@ document.getElementById("radioScript").addEventListener("click", e => {
     radioApplyAndSave(i, 0, radioLineLength(ln), radioLineModeEraser ? "x" : radioMarkColor);
     return;
   }
+  openRadioInline({ i, el });
+});
+
+// 行をその場で直す／行の下に新しい行を足す（isNew: まだ保存していない新しい行）
+function openRadioInline({ i, el, anchor, isNew }) {
   const c = CARDS[radioIdx];
   const lines = radioText(c.id).split("\n");
-  if (!(i >= 0 && i < lines.length)) return;
+  if (isNew ? !(i >= 0 && i <= lines.length) : !(i >= 0 && i < lines.length)) return;
   radioInlineOpen = true;
   const wrap = document.createElement("div");
   wrap.className = "radio-inline";
-  wrap.innerHTML = '<textarea spellcheck="false"></textarea><div class="radio-editbtns"><button type="button" class="radio-btn save">保存</button><button type="button" class="radio-btn" data-act="cancel">キャンセル</button><button type="button" class="radio-btn" data-act="del">この行を削除</button><span class="radio-count">「## 」で始めると見出し（読み上げない部分）</span></div>';
+  wrap.innerHTML = '<textarea spellcheck="false"></textarea><div class="radio-editbtns"><button type="button" class="radio-btn save">保存</button><button type="button" class="radio-btn" data-act="cancel">キャンセル</button><button type="button" class="radio-btn" data-act="add">この下に行を追加</button><button type="button" class="radio-btn" data-act="del">この行を削除</button><span class="radio-count">「## 」で始めると見出し（読み上げない部分）</span></div>';
   const ta = wrap.querySelector("textarea");
-  ta.value = lines[i];
-  el.replaceWith(wrap);
+  ta.value = isNew ? "" : lines[i];
+  ta.placeholder = isNew ? "新しい行を入力" : "";
+  if (isNew) {
+    wrap.querySelector('[data-act="del"]').style.display = "none";
+    const ref = anchor ? anchor.nextSibling : null;
+    const sc = document.getElementById("radioScript");
+    if (anchor && ref && ref.nodeType === 3) ref.after(wrap);
+    else if (anchor) anchor.after(wrap);
+    else sc.prepend(wrap);
+    wrap.scrollIntoView({ block: "center", behavior: "smooth" });
+  } else el.replaceWith(wrap);
   const fit = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight + 4) + "px"; };
   ta.addEventListener("input", fit);
   fit(); ta.focus();
   const done = () => { radioInlineOpen = false; };
-  const finish = (newLines) => {
+  const merged = () => {
+    const vals = ta.value.split("\n");
+    const nl = lines.slice();
+    nl.splice(i, isNew ? 0 : 1, ...vals);
+    return { nl, k: vals.length };
+  };
+  const finish = (newLines, after) => {
     const y = window.scrollY;
     radioSave({ cardId: c.id, text: newLines.join("\n") }).then(ok => {
-      done(); renderRadio(); renderRadioSelect(); window.scrollTo(0, y);
+      done(); renderRadio(); renderRadioSelect();
+      if (after && ok) after(); else window.scrollTo(0, y);
     });
   };
-  wrap.querySelector(".save").addEventListener("click", () => {
-    const nl = lines.slice(); nl.splice(i, 1, ...ta.value.split("\n")); finish(nl);
+  wrap.querySelector(".save").addEventListener("click", () => finish(merged().nl));
+  wrap.querySelector('[data-act="add"]').addEventListener("click", () => {
+    const { nl, k } = merged();
+    const newIdx = i + k;
+    finish(nl, () => {
+      // 直前の行（なければ、その手前で一番近い行）の後ろに、新しい入力欄を出す
+      let anchor = null;
+      document.querySelectorAll("#radioScript .rl").forEach(x => { if (parseInt(x.dataset.i, 10) <= newIdx - 1) anchor = x; });
+      openRadioInline({ i: newIdx, anchor, isNew: true });
+    });
   });
   wrap.querySelector('[data-act="del"]').addEventListener("click", () => {
     const nl = lines.slice(); nl.splice(i, 1); finish(nl);
@@ -742,7 +771,7 @@ document.getElementById("radioScript").addEventListener("click", e => {
   wrap.querySelector('[data-act="cancel"]').addEventListener("click", () => {
     const y = window.scrollY; done(); renderRadio(); window.scrollTo(0, y);
   });
-});
+}
 document.getElementById("radioSelect").addEventListener("change", e => radioGo(parseInt(e.target.value, 10)));
 document.getElementById("radioPrev").addEventListener("click", () => radioGo(radioIdx - 1));
 document.getElementById("radioNext").addEventListener("click", () => radioGo(radioIdx + 1));
