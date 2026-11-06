@@ -24,13 +24,23 @@ let STALE_SCREEN = false;
 let SAVE_IN_FLIGHT = false;
 let ZUKAN_SAVE_QUEUE = Promise.resolve(); // 保存を1つずつ順番に行うための待ち行列(同時に2つ走らせない)
 
+// 「更新する」：再読み込みしても、いま見ていたタブとスクロール位置に戻れるよう、直前に覚えておく
+function zukanReloadKeepScreen() {
+  try {
+    const act = document.querySelector(".rail-btn.active");
+    sessionStorage.setItem("zukanReloadState", JSON.stringify({
+      view: act ? act.dataset.view : "dict", y: window.scrollY, ts: Date.now()
+    }));
+  } catch (e) {}
+  location.reload();
+}
 function showStaleScreenBanner() {
   if (document.getElementById("staleScreenBanner")) return;
   const b = document.createElement("div");
   b.id = "staleScreenBanner";
   b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;background:#b23b5a;color:#fff;padding:10px;text-align:center;font-size:12px;";
   b.innerHTML = "⚠️ 他の端末で更新されました。更新してから使ってください。" +
-    '<button onclick="location.reload()" style="margin-left:8px;padding:4px 10px;border-radius:14px;border:none;background:#fff;color:#b23b5a;font-weight:700;">更新する</button>';
+    '<button onclick="zukanReloadKeepScreen()" style="margin-left:8px;padding:4px 10px;border-radius:14px;border:none;background:#fff;color:#b23b5a;font-weight:700;">更新する</button>';
   document.body.appendChild(b);
 }
 
@@ -3143,6 +3153,19 @@ document.getElementById("ceDeleteBtn").addEventListener("click", () => {
 
 // ---------- init ----------
 renderGrid();
+
+// 「更新する」で再読み込みした直後なら、更新前に見ていたタブとスクロール位置に戻す
+(function restoreAfterReload() {
+  let st = null;
+  try { st = JSON.parse(sessionStorage.getItem("zukanReloadState") || "null"); sessionStorage.removeItem("zukanReloadState"); } catch (e) {}
+  if (!st || !st.view || Date.now() - (st.ts || 0) > 2 * 60 * 1000) return;
+  const btn = document.querySelector('.rail-btn[data-view="' + st.view + '"]');
+  if (!btn || st.view === "dict") return;
+  if (st.view === "radio") radioUserNav = true; // 開いていた回のまま（先頭の未予約回へ自動で飛ばない）
+  btn.click();
+  const y = Number(st.y) || 0;
+  [300, 900, 1800].forEach(ms => setTimeout(() => window.scrollTo(0, y), ms));
+})();
 
 
 // ---- バックアップ書き出し：3つのKVデータを1つのJSONファイルにまとめてダウンロード ----
