@@ -790,6 +790,14 @@ document.getElementById("radioFont").addEventListener("input", () => {
   try { localStorage.setItem("radioFont", document.getElementById("radioFont").value); } catch (e) {}
 });
 document.getElementById("radioHideHead").addEventListener("change", renderRadio);
+// 台本まるごとコピー：画面に出ている内容のまま（「見出しを隠す」にチェックがあれば見出し行は除く）
+document.getElementById("radioCopyBtn").addEventListener("click", e => {
+  const hide = document.getElementById("radioHideHead").checked;
+  const text = radioText(CARDS[radioIdx].id).split("\n")
+    .filter(l => !(hide && /^##(\s|$)/.test(l))).join("\n").replace(RADIO_MARK_RE, "$2").replace(/\n{3,}/g, "\n\n").trim();
+  if (!text) { alert("この回にはまだ台本がありません。"); return; }
+  radioCopyText(text, e.currentTarget);
+});
 document.getElementById("radioEditBtn").addEventListener("click", openRadioEdit);
 document.getElementById("radioCancel").addEventListener("click", closeRadioEdit);
 document.getElementById("radioText").addEventListener("input", updateRadioCount);
