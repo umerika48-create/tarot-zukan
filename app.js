@@ -190,11 +190,110 @@ function radioLabel(c, i) {
   const cov = (radioCovers[c.id] ? " 🖼" : "") + (radioSchedule[c.id] && radioSchedule[c.id].reserved ? " ✔予約済" : "");
   return `${has} 第${i + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp}${cov}`;
 }
-function renderRadioSelect() {
-  const sel = document.getElementById("radioSelect");
-  sel.innerHTML = RADIO_LIST.map((c, i) => `<option value="${i}">${escapeHtml(radioLabel(c, i))}</option>`).join("");
-  sel.value = String(radioIdx);
+// ---- 回ピッカー：ボタンを押すと開く選択パネル（検索・グループの折りたたみ・状況での絞り込み）----
+const RADIO_GROUPS = [["major", "大アルカナ"], ["intro", "スート紹介"], ["w", "ワンド"], ["c", "カップ"], ["s", "ソード"], ["p", "ペンタクル"]];
+const RADIO_PICK_FILTERS = [["all", "すべて"], ["todo", "台本あり・未予約"], ["reserved", "予約済み"], ["noscript", "台本なし"]];
+let radioPickFilter = "all";
+let radioPickQ = "";
+let radioPickOpenSet = new Set();
+function radioGroupKey(c) { return c.arcana === "major" ? "major" : c.arcana === "intro" ? "intro" : String(c.id).charAt(0); }
+function radioIsReserved(c) { return !!(radioSchedule[c.id] && radioSchedule[c.id].reserved); }
+function radioPickPass(c, f) {
+  const has = !!radioText(c.id).trim(), res = radioIsReserved(c);
+  return f === "all" ? true : f === "todo" ? (has && !res) : f === "reserved" ? res : !has;
 }
+// 検索用：全角数字を半角にして、小文字にそろえる
+function radioPickNorm(t) { return String(t).replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).toLowerCase(); }
+function radioPickHay(c, i) { return radioPickNorm(`${i + 1} 第${i + 1}回 ${c.number || ""} ${c.name_jp} ${c.name_en || ""}`); }
+function radioPickBtnLabel() {
+  const c = RADIO_LIST[radioIdx];
+  return `第${radioIdx + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp} ▾`;
+}
+function radioFmtMD(ymd) { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(ymd || ""); return m ? `${+m[1]}/${+m[2]}` : ""; }
+function renderRadioPickList() {
+  const list = document.getElementById("radioPickList"), chips = document.getElementById("radioPickChips");
+  const terms = radioPickNorm(radioPickQ).split(/\s+/).filter(Boolean);
+  const filtering = terms.length > 0 || radioPickFilter !== "all";
+  chips.innerHTML = RADIO_PICK_FILTERS.map(([k, label]) => {
+    const n = k === "all" ? RADIO_LIST.length : RADIO_LIST.filter(c => radioPickPass(c, k)).length;
+    return `<button type="button" class="rpick-chip${radioPickFilter === k ? " on" : ""}" data-f="${k}">${label} ${n}</button>`;
+  }).join("");
+  const curKey = radioGroupKey(RADIO_LIST[radioIdx]);
+  let html = "";
+  RADIO_GROUPS.forEach(([key, gname]) => {
+    const all = []; RADIO_LIST.forEach((c, i) => { if (radioGroupKey(c) === key) all.push(i); });
+    const shown = all.filter(i => {
+      const c = RADIO_LIST[i];
+      if (!radioPickPass(c, radioPickFilter)) return false;
+      if (!terms.length) return true;
+      const hay = radioPickHay(c, i);
+      return terms.every(t => hay.includes(t));
+    });
+    if (!shown.length) return;
+    const open = filtering || radioPickOpenSet.has(key);
+    const reservedN = all.filter(i => radioIsReserved(RADIO_LIST[i])).length;
+    const stat = filtering ? `${shown.length}件` : `予約済み ${reservedN}/${all.length}`;
+    html += `<button type="button" class="rpick-gh${filtering ? " fixed" : ""}" data-g="${key}" aria-expanded="${open}"><span>${open ? "▼" : "▶"}</span>${escapeHtml(gname)}<span class="rpick-gs">${stat}</span></button>`;
+    if (open) shown.forEach(i => {
+      const c = RADIO_LIST[i], has = !!radioText(c.id).trim(), sch = radioSchedule[c.id] || {};
+      const md = radioFmtMD(sch.date);
+      const st = (radioCovers[c.id] ? "🖼 " : "") + (sch.reserved ? "✔予約済" + (md ? " " + md : "") : (md ? "予定 " + md : ""));
+      html += `<button type="button" class="rpick-it${i === radioIdx ? " cur" : ""}${has ? "" : " none"}" data-i="${i}">` +
+        `<span class="ri-mark">${has ? "●" : "○"}</span><span class="ri-no">第${i + 1}回</span>` +
+        `<span class="ri-nm">${escapeHtml((c.arcana === "major" ? c.number + " " : "") + c.name_jp)}</span>` +
+        (st ? `<span class="ri-st${sch.reserved ? " ok" : ""}">${escapeHtml(st)}</span>` : "") + `</button>`;
+    });
+  });
+  list.innerHTML = html || '<div class="rpick-empty">該当する回がありません</div>';
+}
+function radioPickIsOpen() { return !document.getElementById("radioPickPanel").hidden; }
+function radioPickOpen() {
+  radioPickFilter = "all"; radioPickQ = "";
+  radioPickOpenSet = new Set([radioGroupKey(RADIO_LIST[radioIdx])]);
+  const q = document.getElementById("radioPickQ"); q.value = "";
+  document.getElementById("radioPickPanel").hidden = false;
+  document.getElementById("radioPickBackdrop").hidden = false;
+  document.getElementById("radioPickBtn").setAttribute("aria-expanded", "true");
+  renderRadioPickList();
+  const cur = document.querySelector("#radioPickList .rpick-it.cur");
+  if (cur) cur.scrollIntoView({ block: "center" });
+  if (window.innerWidth > 720) q.focus(); // スマホは、キーボードが出て一覧が隠れるので自動では開かない
+}
+function radioPickClose(focusBtn) {
+  document.getElementById("radioPickPanel").hidden = true;
+  document.getElementById("radioPickBackdrop").hidden = true;
+  document.getElementById("radioPickBtn").setAttribute("aria-expanded", "false");
+  if (focusBtn) document.getElementById("radioPickBtn").focus();
+}
+function renderRadioSelect() {
+  document.getElementById("radioPickBtn").textContent = radioPickBtnLabel();
+  if (radioPickIsOpen()) { const y = document.getElementById("radioPickList").scrollTop; renderRadioPickList(); document.getElementById("radioPickList").scrollTop = y; }
+}
+(function setupRadioPick() {
+  const btn = document.getElementById("radioPickBtn"), panel = document.getElementById("radioPickPanel");
+  btn.addEventListener("click", () => { if (radioPickIsOpen()) radioPickClose(); else radioPickOpen(); });
+  document.getElementById("radioPickClose").addEventListener("click", () => radioPickClose(true));
+  document.getElementById("radioPickBackdrop").addEventListener("click", () => radioPickClose());
+  document.addEventListener("mousedown", e => { if (radioPickIsOpen() && !document.getElementById("radioPick").contains(e.target)) radioPickClose(); });
+  document.getElementById("radioPickQ").addEventListener("input", e => { radioPickQ = e.target.value; renderRadioPickList(); document.getElementById("radioPickList").scrollTop = 0; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && radioPickIsOpen()) { e.stopPropagation(); radioPickClose(true); } });
+  panel.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.id === "radioPickQ") { // 検索中にEnter：先頭の候補へ
+      const first = document.querySelector("#radioPickList .rpick-it");
+      if (first) { e.preventDefault(); radioPickClose(); radioGo(parseInt(first.dataset.i, 10)); }
+    }
+  });
+  panel.addEventListener("click", e => {
+    const chip = e.target.closest(".rpick-chip"), gh = e.target.closest(".rpick-gh"), it = e.target.closest(".rpick-it");
+    if (chip) { radioPickFilter = chip.dataset.f; renderRadioPickList(); document.getElementById("radioPickList").scrollTop = 0; }
+    else if (gh) {
+      if (gh.classList.contains("fixed")) return; // 検索・絞り込み中は、該当する回を全部開いて見せる
+      const k = gh.dataset.g;
+      if (radioPickOpenSet.has(k)) radioPickOpenSet.delete(k); else radioPickOpenSet.add(k);
+      renderRadioPickList();
+    } else if (it) { radioPickClose(); radioGo(parseInt(it.dataset.i, 10)); }
+  });
+})();
 // 配信予定日と予約済み（stand.fm）。各回の上部から入力でき、/api/radio-schedule に保存する。
 let radioSchedule = {}; // { カードID: {date:"YYYY-MM-DD"|"", reserved:bool} }
 function radioFmtDate(ymd) {
@@ -336,7 +435,7 @@ function renderRadio() {
   renderRadioPublished();
   renderRadioCover();
   renderRadioPost();
-  document.getElementById("radioSelect").value = String(radioIdx);
+  renderRadioSelect();
   document.getElementById("radioSide").innerHTML =
     `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${RADIO_LIST.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>` + radioToolsHtml();
   const text = radioText(c.id);
@@ -790,7 +889,6 @@ function openRadioInline({ i, el, anchor, isNew }) {
     const y = window.scrollY; done(); renderRadio(); window.scrollTo(0, y);
   });
 }
-document.getElementById("radioSelect").addEventListener("change", e => radioGo(parseInt(e.target.value, 10)));
 document.getElementById("radioPrev").addEventListener("click", () => radioGo(radioIdx - 1));
 document.getElementById("radioNext").addEventListener("click", () => radioGo(radioIdx + 1));
 document.getElementById("radioFont").addEventListener("input", () => {

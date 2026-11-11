@@ -712,7 +712,39 @@
 
   /* ラジオ(収録用台本) */
   .radio-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px; }
-  .radio-bar select { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-family:inherit; font-size:14px; max-width:100%; }
+  /* 回ピッカー（ボタン→検索・グループ折りたたみ・状況絞り込みのパネル） */
+  .rpick { position:relative; max-width:100%; }
+  .rpick-btn { font-size:14px; padding:8px 12px; max-width:100%; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rpick-panel { position:absolute; left:0; top:calc(100% + 6px); z-index:80; width:min(440px, 92vw); max-height:min(72vh, 620px); display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--gold-dim); border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,.55); overflow:hidden; }
+  .rpick-panel[hidden], .rpick-backdrop[hidden] { display:none; }
+  .rpick-head { display:flex; gap:8px; align-items:center; padding:10px 10px 6px; }
+  .rpick-head input { flex:1; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:9px 12px; font-family:inherit; font-size:16px; }
+  .rpick-head input:focus { outline:none; border-color:var(--gold); }
+  .rpick-close { background:none; border:none; color:var(--text-dim); font-size:24px; line-height:1; padding:2px 8px; cursor:pointer; }
+  .rpick-chips { display:flex; flex-wrap:wrap; gap:6px; padding:4px 10px 8px; border-bottom:1px solid var(--border); }
+  .rpick-chip { background:var(--bg); color:var(--text-dim); border:1px solid var(--border); border-radius:999px; padding:5px 11px; font-family:inherit; font-size:12px; cursor:pointer; }
+  .rpick-chip.on { background:var(--gold); color:#1a1722; border-color:var(--gold); font-weight:700; }
+  .rpick-list { overflow-y:auto; overscroll-behavior:contain; padding:4px 6px 10px; }
+  .rpick-gh { display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; border-bottom:1px solid var(--border); color:var(--gold); font-family:inherit; font-size:14px; font-weight:700; padding:11px 6px 8px; margin-top:4px; cursor:pointer; text-align:left; }
+  .rpick-gh.fixed { cursor:default; }
+  .rpick-gh .rpick-gs { margin-left:auto; font-size:11px; font-weight:400; color:var(--text-dim); }
+  .rpick-it { display:flex; align-items:baseline; gap:6px; width:100%; background:none; border:none; border-radius:8px; color:var(--text); font-family:inherit; font-size:14px; padding:9px 8px; cursor:pointer; text-align:left; }
+  .rpick-it:hover { background:var(--surface-hover); }
+  .rpick-it.cur { background:rgba(201,169,97,.16); outline:1px solid var(--gold-dim); }
+  .rpick-it .ri-mark { color:var(--gold); width:1em; flex:none; }
+  .rpick-it.none .ri-mark { color:var(--text-dim); }
+  .rpick-it .ri-no { color:var(--text-dim); flex:none; }
+  .rpick-it .ri-nm { flex:1; min-width:0; }
+  .rpick-it .ri-st { font-size:11px; color:var(--text-dim); flex:none; white-space:nowrap; }
+  .rpick-it .ri-st.ok { color:var(--gold); }
+  .rpick-empty { color:var(--text-dim); font-size:13px; padding:22px 8px; text-align:center; }
+  .rpick-backdrop { display:none; }
+  @media (max-width: 720px) {
+    .rpick-backdrop { display:block; position:fixed; inset:0; z-index:79; background:rgba(0,0,0,.55); }
+    .rpick-panel { position:fixed; left:0; right:0; bottom:0; top:auto; width:auto; max-height:82vh; border-radius:18px 18px 0 0; border-bottom:none; z-index:80; }
+    .rpick-it { padding:12px 8px; font-size:15px; }
+    .rpick-gh { padding:13px 6px 9px; }
+  }
   .radio-btn { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-family:inherit; font-size:13px; cursor:pointer; }
   .radio-btn:hover { background:var(--surface-hover); border-color:var(--gold); }
   .radio-btn.save { background:var(--gold); color:#1a1722; border-color:var(--gold); font-weight:700; }
@@ -1194,7 +1226,18 @@
     <!-- ラジオ(収録用台本) VIEW -->
     <div class="view hidden" id="view-radio">
       <div class="radio-bar">
-        <select id="radioSelect" aria-label="回を選ぶ"></select>
+        <div class="rpick" id="radioPick">
+          <button type="button" class="radio-btn rpick-btn" id="radioPickBtn" aria-haspopup="dialog" aria-expanded="false" aria-label="回を選ぶ"></button>
+          <div class="rpick-backdrop" id="radioPickBackdrop" hidden></div>
+          <div class="rpick-panel" id="radioPickPanel" role="dialog" aria-label="回を選ぶ" hidden>
+            <div class="rpick-head">
+              <input type="search" id="radioPickQ" placeholder="回・カード名で探す（ソード、27 など）" autocomplete="off" enterkeyhint="search">
+              <button type="button" class="rpick-close" id="radioPickClose" aria-label="閉じる">×</button>
+            </div>
+            <div class="rpick-chips" id="radioPickChips"></div>
+            <div class="rpick-list" id="radioPickList"></div>
+          </div>
+        </div>
         <button type="button" class="radio-btn" id="radioPrev">‹ 前の回</button>
         <button type="button" class="radio-btn" id="radioNext">次の回 ›</button>
         <span class="radio-sp"></span>
