@@ -80,7 +80,7 @@ def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None, 
     sh = sh.filter(ImageFilter.GaussianBlur(3.5))
     res = Image.alpha_composite(Image.alpha_composite(base, sh), tx)
     # --- カード（白い縁・角丸・5度傾け・影） ---
-    cp = os.path.join(ROOT, "images", card_id + ".jpg")
+    cp = os.path.join(ROOT, "images", {"i-w": "w01", "i-c": "c01", "i-s": "s01", "i-p": "p01"}.get(card_id, card_id) + ".jpg")  # スート紹介回(i-*)は、そのスートのエースの絵を使う
     if not os.path.exists(cp):
         sys.exit("カード画像が見つかりません: " + cp)
     H = card_h or CARD_H; card = Image.open(cp).convert("RGB"); W = int(card.size[0] * H / card.size[1])

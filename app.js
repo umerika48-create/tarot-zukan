@@ -168,7 +168,15 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
 });
 
 // ---------- ラジオ（stand.fm収録用の台本表示・編集）----------
-// 台本はタロットRWS版78枚（CARDS）に1回ずつ対応。紹介順は CARDS の並び（大アルカナ0〜21→ワンド→カップ→ソード→ペンタクル）。
+// 台本の順番（RADIO_LIST）：大アルカナ22回→4スートの紹介4回→小アルカナ（数字順に ワンド・カップ・ソード・ペンタクルを交互）56回＝全82回。紹介回のIDは i-w / i-c / i-s / i-p。
+const RADIO_LIST = (() => {
+  const by = {}; CARDS.forEach(c => { by[c.id] = c; });
+  const list = CARDS.filter(c => c.arcana === "major");
+  [["w", "ワンド", "Suit of Wands"], ["c", "カップ", "Suit of Cups"], ["s", "ソード", "Suit of Swords"], ["p", "ペンタクル", "Suit of Pentacles"]].forEach(a =>
+    list.push({ id: "i-" + a[0], arcana: "intro", number: "", name_jp: a[1] + "の紹介", name_en: a[2], img: by[a[0] + "01"].img }));
+  for (let n = 1; n <= 14; n++) ["w", "c", "s", "p"].forEach(s => { const c = by[s + String(n).padStart(2, "0")]; if (c) list.push(c); });
+  return list;
+})();
 // 同梱の初期台本(RADIO_SEED)と、KV(/api/radio-scripts)に保存した編集分をマージして使う（保存分が優先）。
 let radioStore = {};
 let radioIdx = 0;
@@ -184,7 +192,7 @@ function radioLabel(c, i) {
 }
 function renderRadioSelect() {
   const sel = document.getElementById("radioSelect");
-  sel.innerHTML = CARDS.map((c, i) => `<option value="${i}">${escapeHtml(radioLabel(c, i))}</option>`).join("");
+  sel.innerHTML = RADIO_LIST.map((c, i) => `<option value="${i}">${escapeHtml(radioLabel(c, i))}</option>`).join("");
   sel.value = String(radioIdx);
 }
 // 配信予定日と予約済み（stand.fm）。各回の上部から入力でき、/api/radio-schedule に保存する。
@@ -198,7 +206,7 @@ function renderRadioPublished() {
   if (!box) return;
   if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
   box.style.display = "";
-  const s = radioSchedule[CARDS[radioIdx].id] || {};
+  const s = radioSchedule[RADIO_LIST[radioIdx].id] || {};
   const date = /^\d{4}-\d{2}-\d{2}$/.test(s.date || "") ? s.date : "";
   box.className = "radio-pub" + (s.reserved ? " done" : "");
   box.innerHTML =
@@ -208,7 +216,7 @@ function renderRadioPublished() {
     `<label class="rp-field rp-check"><input type="checkbox" id="radioSchedReserved"${s.reserved ? " checked" : ""}> 予約済み</label>`;
 }
 function radioScheduleSave(payload) {
-  const id = CARDS[radioIdx].id;
+  const id = RADIO_LIST[radioIdx].id;
   const prev = radioSchedule[id];
   const cur = Object.assign({ date: "", reserved: false }, prev, payload);
   if (!cur.date && !cur.reserved) delete radioSchedule[id]; else radioSchedule[id] = { date: cur.date, reserved: cur.reserved };
@@ -248,7 +256,7 @@ function renderRadioPost() {
   if (!box) return;
   if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
   box.style.display = "";
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   const p = radioPosts[c.id];
   const open = radioPostOpen || radioPostEdit;
   box.classList.toggle("open", open);
@@ -299,7 +307,7 @@ function radioCopyText(text, btn) {
   else fallback();
 }
 function radioPostSave() {
-  const id = CARDS[radioIdx].id;
+  const id = RADIO_LIST[radioIdx].id;
   const payload = { cardId: id };
   document.querySelectorAll("#radioPost .rpost-ta").forEach(ta => { payload[ta.dataset.f] = ta.value.trim(); });
   payload.tags = ""; // ハッシュタグは放送の説明の中に入れる（別項目は使わない）
@@ -314,7 +322,7 @@ function radioPostSave() {
   box.addEventListener("click", e => {
     const b = e.target.closest("[data-act]");
     if (!b) return;
-    const act = b.dataset.act, p = radioPosts[CARDS[radioIdx].id] || {};
+    const act = b.dataset.act, p = radioPosts[RADIO_LIST[radioIdx].id] || {};
     if (act === "toggle") { if (!radioPostEdit) { radioPostOpen = !radioPostOpen; renderRadioPost(); } }
     else if (act === "copy") radioCopyText(radioPostVal(p, b.dataset.f), b);
     else if (act === "edit") { radioPostEdit = true; renderRadioPost(); }
@@ -324,13 +332,13 @@ function radioPostSave() {
   box.addEventListener("input", e => { if (e.target.classList && e.target.classList.contains("rpost-ta")) updateRadioPostCount(e.target); });
 })();
 function renderRadio() {
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   renderRadioPublished();
   renderRadioCover();
   renderRadioPost();
   document.getElementById("radioSelect").value = String(radioIdx);
   document.getElementById("radioSide").innerHTML =
-    `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>` + radioToolsHtml();
+    `<img src="${escapeHtml(c.img)}" alt="${escapeHtml(c.name_jp)}"><div><div class="rs-no">第${radioIdx + 1}回 / ${RADIO_LIST.length}</div><div class="rs-name">${escapeHtml(c.name_jp)}</div><div class="rs-en">${escapeHtml(c.name_en || "")}</div></div>` + radioToolsHtml();
   const text = radioText(c.id);
   const box = document.getElementById("radioScript");
   if (!text.trim()) {
@@ -355,14 +363,14 @@ function radioGo(i) {
   radioInlineOpen = false;
   radioPostEdit = false;
   radioPostOpen = false;
-  radioIdx = (i + CARDS.length) % CARDS.length;
+  radioIdx = (i + RADIO_LIST.length) % RADIO_LIST.length;
   closeRadioEdit();
   renderRadio();
   window.scrollTo(0, 0);
   try { localStorage.setItem("radioIdx", String(radioIdx)); } catch (e) {}
 }
 function openRadioEdit() {
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   const ta = document.getElementById("radioText");
   ta.value = radioText(c.id);
   document.getElementById("radioScript").style.display = "none";
@@ -396,8 +404,8 @@ function radioSave(payload) {
 // 該当がなければ（全部予約済み・台本なし）、前回見ていた回のまま。
 let radioUserNav = false;
 function radioOldestUnreservedIdx() {
-  for (let i = 0; i < CARDS.length; i++) {
-    const id = CARDS[i].id;
+  for (let i = 0; i < RADIO_LIST.length; i++) {
+    const id = RADIO_LIST[i].id;
     if (!(radioSchedule[id] && radioSchedule[id].reserved) && radioText(id).trim()) return i;
   }
   return -1;
@@ -405,7 +413,7 @@ function radioOldestUnreservedIdx() {
 function initRadio() {
   if (!radioLoaded) {
     radioLoaded = true;
-    try { const s = parseInt(localStorage.getItem("radioIdx"), 10); if (s >= 0 && s < CARDS.length) radioIdx = s; } catch (e) {}
+    try { const s = parseInt(localStorage.getItem("radioIdx"), 10); if (s >= 0 && s < RADIO_LIST.length) radioIdx = s; } catch (e) {}
     let savedFont = null;
     try { savedFont = localStorage.getItem("radioFont"); } catch (e) {}
     document.getElementById("radioFont").value = savedFont || (window.innerWidth <= 720 ? "22" : "28");
@@ -454,7 +462,7 @@ function radioFmtBytes(n) {
 function renderRadioCoverOld() {
   const box = document.getElementById("radioCoverOld");
   if (!box) return;
-  const key = CARDS[radioIdx].id + "-old", m = radioCovers[key];
+  const key = RADIO_LIST[radioIdx].id + "-old", m = radioCovers[key];
   if (!m || (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE)) { box.style.display = "none"; box.innerHTML = ""; return; }
   box.style.display = "";
   const ext = RADIO_COVER_EXT[m.type] || "";
@@ -470,7 +478,7 @@ function renderRadioCover() {
   const box = document.getElementById("radioCover");
   if (typeof ZUKAN_IS_OFFLINE_FILE !== "undefined" && ZUKAN_IS_OFFLINE_FILE) { box.style.display = "none"; return; }
   box.style.display = "";
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   const m = radioCovers[c.id];
   const dis = radioCoverBusy ? " disabled" : "";
   const busy = radioCoverBusy ? '<span class="rc-busy">処理中…</span>' : "";
@@ -506,7 +514,7 @@ function radioCoverUpload(file) {
   }
   if (file.type && !/^image\/(png|jpeg|webp)$/.test(file.type)) { alert("PNG・JPEG・WebPの画像を選んでください。"); return; }
   if (file.size > RADIO_COVER_MAX) { alert("画像が大きすぎます（" + radioFmtBytes(file.size) + "）。8MB以下にしてください。"); return; }
-  const id = CARDS[radioIdx].id;
+  const id = RADIO_LIST[radioIdx].id;
   radioCoverBusy = true; renderRadioCover();
   fetch("/api/radio-covers?id=" + encodeURIComponent(id), {
     method: "POST",
@@ -529,14 +537,14 @@ function radioCoverFileName(c, m, key) {
   return "第" + (radioIdx + 1) + "回_" + safe + "_カバー" + (key && /-old$/.test(key) ? "_旧デザイン" : "") + "." + (RADIO_COVER_EXT[m.type] || "png");
 }
 function radioCoverPrefetch() {
-  const c = CARDS[radioIdx], m = radioCovers[c.id];
+  const c = RADIO_LIST[radioIdx], m = radioCovers[c.id];
   if (!m) return;
   const url = radioCoverUrl(c.id, m);
   if (radioCoverBlobs[url]) return;
   fetch(url).then(r => r.ok ? r.blob() : null).then(b => { if (b) radioCoverBlobs[url] = b; }).catch(() => {});
 }
 function radioCoverToPhotos(key) {
-  const c = CARDS[radioIdx]; key = key || c.id; const m = radioCovers[key];
+  const c = RADIO_LIST[radioIdx]; key = key || c.id; const m = radioCovers[key];
   if (!m) return;
   const url = radioCoverUrl(key, m);
   const share = blob => {
@@ -553,7 +561,7 @@ function radioCoverToPhotos(key) {
   p.catch(err => { if (err && err.name === "AbortError") return; fallback(); }); // 共有シートを閉じただけのときは、何もしない
 }
 function radioCoverDownload(key) {
-  const c = CARDS[radioIdx]; key = key || c.id; const m = radioCovers[key];
+  const c = RADIO_LIST[radioIdx]; key = key || c.id; const m = radioCovers[key];
   if (!m) return;
   fetch(radioCoverUrl(key, m)).then(r => r.ok ? r.blob() : Promise.reject(new Error("dl"))).then(blob => {
     const a = document.createElement("a");
@@ -564,7 +572,7 @@ function radioCoverDownload(key) {
   }).catch(() => alert("ダウンロードできませんでした。通信を確認して、もう一度お試しください。"));
 }
 function radioCoverDelete() {
-  const c = CARDS[radioIdx], id = c.id;
+  const c = RADIO_LIST[radioIdx], id = c.id;
   if (!radioCovers[id] || radioCoverBusy) return;
   if (!confirm("第" + (radioIdx + 1) + "回のカバー画像を削除します。元に戻せません。\n（必要なら先にダウンロードしてください）\n削除しますか？")) return;
   radioCoverBusy = true; renderRadioCover();
@@ -585,14 +593,14 @@ function radioCoverDelete() {
     else if (act === "photo") radioCoverToPhotos();
     else if (act === "dl") radioCoverDownload();
     else if (act === "del") radioCoverDelete();
-    else if (act === "view") { const c = CARDS[radioIdx]; window.open(radioCoverUrl(c.id, radioCovers[c.id]), "_blank"); }
+    else if (act === "view") { const c = RADIO_LIST[radioIdx]; window.open(radioCoverUrl(c.id, radioCovers[c.id]), "_blank"); }
   });
   input.addEventListener("change", () => { const f = input.files && input.files[0]; input.value = ""; radioCoverUpload(f); });
   const oldBox = document.getElementById("radioCoverOld");
   if (oldBox) oldBox.addEventListener("click", e => {
     const b = e.target.closest("[data-act]");
     if (!b) return;
-    const key = CARDS[radioIdx].id + "-old";
+    const key = RADIO_LIST[radioIdx].id + "-old";
     if (b.dataset.act === "old-photo") radioCoverToPhotos(key);
     else if (b.dataset.act === "old-dl") radioCoverDownload(key);
     else if (b.dataset.act === "old-view") window.open(radioCoverUrl(key, radioCovers[key]), "_blank");
@@ -654,7 +662,7 @@ function radioApplyMark(line, from, to, color) {
 }
 function radioLineLength(line) { return radioParseMarks(line).length; }
 function radioApplyAndSave(lineIdx, from, to, color) {
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   const lines = radioText(c.id).split("\n");
   if (!(lineIdx >= 0 && lineIdx < lines.length) || /^##\s/.test(lines[lineIdx])) return;
   const nl = radioApplyMark(lines[lineIdx], from, to, color);
@@ -719,7 +727,7 @@ document.getElementById("radioScript").addEventListener("click", e => {
   if (sel) return; // 文字を選択しているだけのときは開かない
   const i = parseInt(el.dataset.i, 10);
   if (radioLineMode && !el.classList.contains("rh")) { // 行をタップでマーカー
-    const ln = radioText(CARDS[radioIdx].id).split("\n")[i] || "";
+    const ln = radioText(RADIO_LIST[radioIdx].id).split("\n")[i] || "";
     radioApplyAndSave(i, 0, radioLineLength(ln), radioLineModeEraser ? "x" : radioMarkColor);
     return;
   }
@@ -728,7 +736,7 @@ document.getElementById("radioScript").addEventListener("click", e => {
 
 // 行をその場で直す／行の下に新しい行を足す（isNew: まだ保存していない新しい行）
 function openRadioInline({ i, el, anchor, isNew }) {
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   const lines = radioText(c.id).split("\n");
   if (isNew ? !(i >= 0 && i <= lines.length) : !(i >= 0 && i < lines.length)) return;
   radioInlineOpen = true;
@@ -793,7 +801,7 @@ document.getElementById("radioHideHead").addEventListener("change", renderRadio)
 // 台本まるごとコピー：画面に出ている内容のまま（「見出しを隠す」にチェックがあれば見出し行は除く）
 document.getElementById("radioCopyBtn").addEventListener("click", e => {
   const hide = document.getElementById("radioHideHead").checked;
-  const text = radioText(CARDS[radioIdx].id).split("\n")
+  const text = radioText(RADIO_LIST[radioIdx].id).split("\n")
     .filter(l => !(hide && /^##(\s|$)/.test(l))).join("\n").replace(RADIO_MARK_RE, "$2").replace(/\n{3,}/g, "\n\n").trim();
   if (!text) { alert("この回にはまだ台本がありません。"); return; }
   radioCopyText(text, e.currentTarget);
@@ -802,14 +810,14 @@ document.getElementById("radioEditBtn").addEventListener("click", openRadioEdit)
 document.getElementById("radioCancel").addEventListener("click", closeRadioEdit);
 document.getElementById("radioText").addEventListener("input", updateRadioCount);
 document.getElementById("radioSave").addEventListener("click", () => {
-  const c = CARDS[radioIdx];
+  const c = RADIO_LIST[radioIdx];
   radioSave({ cardId: c.id, text: document.getElementById("radioText").value }).then(ok => {
     if (ok) { closeRadioEdit(); renderRadioSelect(); renderRadio(); }
   });
 });
 document.getElementById("radioReset").addEventListener("click", () => {
   if (!confirm("保存した編集内容を消して、同梱の初期台本に戻します。よろしいですか？")) return;
-  radioSave({ cardId: CARDS[radioIdx].id, delete: true }).then(ok => {
+  radioSave({ cardId: RADIO_LIST[radioIdx].id, delete: true }).then(ok => {
     if (ok) { closeRadioEdit(); renderRadioSelect(); renderRadio(); }
   });
 });
