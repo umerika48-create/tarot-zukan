@@ -169,11 +169,13 @@ document.querySelectorAll(".rail-btn").forEach(btn => {
 
 // ---------- ラジオ（stand.fm収録用の台本表示・編集）----------
 // 台本の順番（RADIO_LIST）：大アルカナ22回→4スートの紹介4回→小アルカナ（数字順に ワンド・カップ・ソード・ペンタクルを交互）56回＝全82回。紹介回のIDは i-w / i-c / i-s / i-p。
+// スート紹介回の絵：そのスートの エース・5・8・10 を2×2に並べた画像（radio_cover/make_intro_images.py で作る）。"img" の形で書くのは、オフライン版で画像を埋め込むため。
+const RADIO_INTRO_IMGS = { w: { "img": "images/intro_w.jpg" }, c: { "img": "images/intro_c.jpg" }, s: { "img": "images/intro_s.jpg" }, p: { "img": "images/intro_p.jpg" } };
 const RADIO_LIST = (() => {
   const by = {}; CARDS.forEach(c => { by[c.id] = c; });
   const list = CARDS.filter(c => c.arcana === "major");
   [["w", "ワンド", "Suit of Wands"], ["c", "カップ", "Suit of Cups"], ["s", "ソード", "Suit of Swords"], ["p", "ペンタクル", "Suit of Pentacles"]].forEach(a =>
-    list.push({ id: "i-" + a[0], arcana: "intro", number: "", name_jp: a[1] + "の紹介", name_en: a[2], img: by[a[0] + "01"].img }));
+    list.push({ id: "i-" + a[0], arcana: "intro", number: "", name_jp: a[1] + "の紹介", name_en: a[2], img: RADIO_INTRO_IMGS[a[0]].img }));
   for (let n = 1; n <= 14; n++) ["w", "c", "s", "p"].forEach(s => { const c = by[s + String(n).padStart(2, "0")]; if (c) list.push(c); });
   return list;
 })();

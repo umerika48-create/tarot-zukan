@@ -253,6 +253,8 @@ def main():
     # 3) それ以外の script src はそのままインライン化
     for jsf in NON_DATA_JS_FILES:
         js_text = read(jsf)
+        if jsf == "app.js":
+            js_text = inline_images_in_js(js_text)   # スート紹介回の画像（RADIO_INTRO_IMGS）を埋め込む
         if jsf == "app.js" and offline_script:
             js_text = offline_script + "\n" + js_text
         tag = f'<script src="{jsf}"></script>'

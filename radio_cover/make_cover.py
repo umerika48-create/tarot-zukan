@@ -24,6 +24,8 @@ APP = "https://tarot-zukan.pages.dev"
 PILL_TEXT = "現役占い師と学ぶ"
 TITLE = "丸暗記しないタロット入門"
 SUB = "（愚者の旅で読む大アルカナ）"
+SUB_MINOR = "（小アルカナ編）"   # スート紹介回（i-*）の副題。第27回以降の小アルカナ回は、まだ SUB のまま
+INTRO_CARD_H = 760            # スート紹介回は、4枚並べなので、カードの絵を少し大きく
 
 def ensure_font():
     if not os.path.exists(FONT):
@@ -75,15 +77,16 @@ def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None, 
         ds.text((x, 959), ch, font=f2, fill=(150, 30, 80, 140), anchor="lm"); dt.text((x, 954), ch, font=f2, fill="white", anchor="lm"); x += f2.getlength(ch) - 1
     f3 = ImageFont.truetype(FONT, 44)
     x = 50
-    for ch in SUB:
+    for ch in (SUB_MINOR if card_id.startswith("i-") else SUB):
         ds.text((x, 1027), ch, font=f3, fill=(150, 30, 80, 120), anchor="lm"); dt.text((x, 1024), ch, font=f3, fill="white", anchor="lm"); x += f3.getlength(ch) + 2
     sh = sh.filter(ImageFilter.GaussianBlur(3.5))
     res = Image.alpha_composite(Image.alpha_composite(base, sh), tx)
     # --- カード（白い縁・角丸・5度傾け・影） ---
-    cp = os.path.join(ROOT, "images", {"i-w": "w01", "i-c": "c01", "i-s": "s01", "i-p": "p01"}.get(card_id, card_id) + ".jpg")  # スート紹介回(i-*)は、そのスートのエースの絵を使う
+    intro = card_id.startswith("i-")
+    cp = os.path.join(ROOT, "images", ("intro_" + card_id[2:] + ".jpg") if intro else card_id + ".jpg")  # スート紹介回(i-*)は、エース・5・8・10の4枚並べ（make_intro_images.py）
     if not os.path.exists(cp):
         sys.exit("カード画像が見つかりません: " + cp)
-    H = card_h or CARD_H; card = Image.open(cp).convert("RGB"); W = int(card.size[0] * H / card.size[1])
+    H = card_h or (INTRO_CARD_H if intro else CARD_H); card = Image.open(cp).convert("RGB"); W = int(card.size[0] * H / card.size[1])
     card = card.resize((W, H), Image.LANCZOS).convert("RGBA")
     rm = Image.new("L", (W, H), 0); ImageDraw.Draw(rm).rounded_rectangle((0, 0, W - 1, H - 1), radius=12, fill=255); card.putalpha(rm)
     pad = 7; bordered = Image.new("RGBA", (W + 2 * pad, H + 2 * pad), (0, 0, 0, 0))
@@ -105,7 +108,10 @@ def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None, 
             pts.append((c + rr * math.cos(a), c + rr * math.sin(a)))
         d.polygon(pts, fill=col + (255,)); im = im.resize((w // S, w // S), Image.LANCZOS)
         res.alpha_composite(im, (int(cx - im.size[0] / 2), int(cy - im.size[1] / 2)))
-    for (x, y, r) in [(135, 300, 30), (95, 400, 17), (445, 318, 18), (460, 585, 34), (432, 440, 14), (120, 640, 16)]:
+    spk = [(135, 300, 30), (95, 400, 17), (445, 318, 18), (460, 585, 34), (432, 440, 14), (120, 640, 16)]
+    if intro:   # 4枚並べは、絵の上にキラキラが重ならないよう、まわりの余白に置く
+        spk = [(62, 150, 24), (50, 470, 15), (66, 760, 20), (600, 60, 16)]
+    for (x, y, r) in spk:
         sparkle(x, y, r)
     # --- さくらこちゃん（天使）をカードより手前に。カードと重なる部分だけ、天使を上に描き直す ---
     cardzone = Image.new("L", res.size, 0); cardzone.paste(rot.split()[3].point(lambda v: 255 if v > 0 else 0), pos)
