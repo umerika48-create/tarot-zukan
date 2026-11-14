@@ -3924,3 +3924,23 @@ if (ZUKAN_IS_OFFLINE_FILE) {
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
   window.addEventListener("pagehide", () => { if (dirty) saveNow(); });
 })();
+
+// ラジオ台本：どこまでスクロールしていても、一番上へ戻れるボタン
+(function setupRadioTopBtn() {
+  const btn = document.getElementById("radioTopBtn");
+  const view = document.getElementById("view-radio");
+  if (!btn || !view) return;
+  let ticking = false;
+  function update() {
+    ticking = false;
+    const visible = !view.classList.contains("hidden") && window.scrollY > 300;
+    btn.classList.toggle("show", visible);
+  }
+  window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  new MutationObserver(update).observe(view, { attributes: true, attributeFilter: ["class"] });
+  btn.addEventListener("click", () => {
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  });
+  update();
+})();

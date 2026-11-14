@@ -812,6 +812,9 @@
   .radio-btn.danger:hover { border-color:#c0564f; color:#e8a29d; }
   .radio-btn[disabled] { opacity:.5; cursor:default; }
   .rc-busy { font-size:12px; color:var(--gold-dim); margin-left:4px; }
+  .radio-top { position:fixed; right:18px; bottom:22px; z-index:45; width:48px; height:48px; border-radius:50%; border:1px solid var(--gold); background:var(--gold); color:#1a1722; font-size:22px; font-weight:700; line-height:1; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(10px); pointer-events:none; transition:opacity .2s, transform .2s; -webkit-tap-highlight-color:transparent; }
+  .radio-top.show { opacity:.92; transform:none; pointer-events:auto; }
+  .radio-top:active { opacity:1; transform:scale(.94); }
   .radio-empty { font-size:14px; color:var(--text-dim); line-height:1.8; padding:20px 4px; }
   .radio-editwrap textarea { width:100%; min-height:60vh; box-sizing:border-box; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:14px; font-family:inherit; font-size:16px; line-height:1.8; resize:vertical; }
   .radio-editbtns { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
@@ -827,6 +830,7 @@
     .rt-mode { margin-top:0; }
     .rc-thumb { width:84px; height:84px; }
     .radio-cover { gap:10px; padding:10px; }
+    .radio-top { right:14px; bottom:calc(76px + env(safe-area-inset-bottom)); }
   }
 
   .course-toolbar { max-width:640px; margin-bottom:14px; }
@@ -1257,6 +1261,7 @@
           <div class="radio-post" id="radioPost"></div>
           <input type="file" id="radioCoverFile" accept="image/png,image/jpeg,image/webp" hidden>
           <div class="radio-script" id="radioScript"></div>
+        <button type="button" class="radio-top" id="radioTopBtn" aria-label="台本の一番上へ戻る" title="一番上へ">&#8593;</button>
           <div class="radio-editwrap" id="radioEditWrap" style="display:none;">
             <textarea id="radioText" spellcheck="false" placeholder="ここに台本を貼り付け／入力します。「## 」で始まる行は編集用の見出し（読み上げない部分）として小さく表示されます。"></textarea>
             <div class="radio-editbtns">
