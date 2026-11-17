@@ -1,13 +1,13 @@
 // 「ラジオ」の回ごとの「配信予定日」と「予約済み」用API（旧「配信日」は廃止）。
 // 画面（各回の上部）から入力でき、Claudeに頼んでここへ記録することもできる。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "radio-schedule" のJSONで
-//   { "m00": { "date": "2026-10-28", "reserved": true, "updatedAt": "ISO日時" }, ... } の形で保存する。
-//   date は未定なら空文字。date も reserved も空の回は、エントリごと消す。
+//   { "m00": { "date": "2026-10-28", "reserved": true, "rerecord": false, "updatedAt": "ISO日時" }, ... } の形で保存する。
+//   date は未定なら空文字。rerecord は「再収録が必要」のチェック。date・reserved・rerecord がすべて空の回は、エントリごと消す。
 // 台本・カバー画像とは別キー（それらの保存や更新番号に影響しない）。
 //
 //   GET  /api/radio-schedule                                → { schedule: {...} }
-//   POST /api/radio-schedule {cardId, date?, reserved?}     → 指定した項目だけ更新（省略した項目はそのまま）
-//        date: "YYYY-MM-DD"（空文字 "" で予定日を消す）／ reserved: true / false
+//   POST /api/radio-schedule {cardId, date?, reserved?, rerecord?} → 指定した項目だけ更新（省略した項目はそのまま）
+//        date: "YYYY-MM-DD"（空文字 "" で予定日を消す）／ reserved: true / false／ rerecord: true / false
 //
 // 旧「配信日」(KV "radio-published")の記録は、このキーが無い最初の読み込み時に
 // 「配信予定日＝その日付、予約済み＝true」として一度だけ移す（旧キーはそのまま残す）。
@@ -60,17 +60,19 @@ export async function onRequestPost(context) {
     const cardId = String((body && body.cardId) || "");
     if (!ID_RE.test(cardId)) return json({ ok: false, error: "invalid cardId" }, 400);
     const data = await load(env);
-    const cur = data[cardId] || { date: "", reserved: false };
+    const cur = data[cardId] || { date: "", reserved: false, rerecord: false };
     let date = cur.date || "";
     let reserved = !!cur.reserved;
+    let rerecord = !!cur.rerecord;
     if (body.date !== undefined) {
       const d = body.date == null ? "" : String(body.date);
       if (d !== "" && !validDate(d)) return json({ ok: false, error: "invalid date (YYYY-MM-DD)" }, 400);
       date = d;
     }
     if (body.reserved !== undefined) reserved = body.reserved === true;
-    if (!date && !reserved) delete data[cardId];
-    else data[cardId] = { date, reserved, updatedAt: new Date().toISOString() };
+    if (body.rerecord !== undefined) rerecord = body.rerecord === true;
+    if (!date && !reserved && !rerecord) delete data[cardId];
+    else data[cardId] = { date, reserved, rerecord, updatedAt: new Date().toISOString() };
     await env.TAROT_KV.put(KEY, JSON.stringify(data));
     return json({ ok: true, schedule: data });
   } catch (err) {

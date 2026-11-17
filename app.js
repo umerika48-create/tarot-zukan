@@ -189,20 +189,21 @@ function radioText(id) {
 }
 function radioLabel(c, i) {
   const has = radioText(c.id).trim() ? "●" : "○";
-  const cov = (radioCovers[c.id] ? " 🖼" : "") + (radioSchedule[c.id] && radioSchedule[c.id].reserved ? " ✔予約済" : "");
+  const cov = (radioCovers[c.id] ? " 🖼" : "") + (radioSchedule[c.id] && radioSchedule[c.id].reserved ? " ✔予約済" : "") + (radioSchedule[c.id] && radioSchedule[c.id].rerecord ? " 🔁再収録" : "");
   return `${has} 第${i + 1}回｜${c.arcana === "major" ? c.number + " " : ""}${c.name_jp}${cov}`;
 }
 // ---- 回ピッカー：ボタンを押すと開く選択パネル（検索・グループの折りたたみ・状況での絞り込み）----
 const RADIO_GROUPS = [["major", "大アルカナ"], ["intro", "スート紹介"], ["w", "ワンド"], ["c", "カップ"], ["s", "ソード"], ["p", "ペンタクル"]];
-const RADIO_PICK_FILTERS = [["all", "すべて"], ["todo", "台本あり・未予約"], ["reserved", "予約済み"], ["noscript", "台本なし"]];
+const RADIO_PICK_FILTERS = [["all", "すべて"], ["todo", "台本あり・未予約"], ["reserved", "予約済み"], ["rerecord", "再収録"], ["noscript", "台本なし"]];
 let radioPickFilter = "all";
 let radioPickQ = "";
 let radioPickOpenSet = new Set();
 function radioGroupKey(c) { return c.arcana === "major" ? "major" : c.arcana === "intro" ? "intro" : String(c.id).charAt(0); }
 function radioIsReserved(c) { return !!(radioSchedule[c.id] && radioSchedule[c.id].reserved); }
+function radioIsRerecord(c) { return !!(radioSchedule[c.id] && radioSchedule[c.id].rerecord); }
 function radioPickPass(c, f) {
   const has = !!radioText(c.id).trim(), res = radioIsReserved(c);
-  return f === "all" ? true : f === "todo" ? (has && !res) : f === "reserved" ? res : !has;
+  return f === "all" ? true : f === "todo" ? (has && !res) : f === "reserved" ? res : f === "rerecord" ? radioIsRerecord(c) : !has;
 }
 // 検索用：全角数字を半角にして、小文字にそろえる
 function radioPickNorm(t) { return String(t).replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).toLowerCase(); }
@@ -239,7 +240,7 @@ function renderRadioPickList() {
     if (open) shown.forEach(i => {
       const c = RADIO_LIST[i], has = !!radioText(c.id).trim(), sch = radioSchedule[c.id] || {};
       const md = radioFmtMD(sch.date);
-      const st = (radioCovers[c.id] ? "🖼 " : "") + (sch.reserved ? "✔予約済" + (md ? " " + md : "") : (md ? "予定 " + md : ""));
+      const st = (radioCovers[c.id] ? "🖼 " : "") + (sch.rerecord ? "🔁再収録 " : "") + (sch.reserved ? "✔予約済" + (md ? " " + md : "") : (md ? "予定 " + md : ""));
       html += `<button type="button" class="rpick-it${i === radioIdx ? " cur" : ""}${has ? "" : " none"}" data-i="${i}">` +
         `<span class="ri-mark">${has ? "●" : "○"}</span><span class="ri-no">第${i + 1}回</span>` +
         `<span class="ri-nm">${escapeHtml((c.arcana === "major" ? c.number + " " : "") + c.name_jp)}</span>` +
@@ -297,7 +298,7 @@ function renderRadioSelect() {
   });
 })();
 // 配信予定日と予約済み（stand.fm）。各回の上部から入力でき、/api/radio-schedule に保存する。
-let radioSchedule = {}; // { カードID: {date:"YYYY-MM-DD"|"", reserved:bool} }
+let radioSchedule = {}; // { カードID: {date:"YYYY-MM-DD"|"", reserved:bool, rerecord:bool} }
 function radioFmtDate(ymd) {
   const [y, m, d] = ymd.split("-").map(Number);
   return `${y}年${m}月${d}日（${"日月火水木金土"[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}）`;
@@ -314,13 +315,14 @@ function renderRadioPublished() {
     `<span class="rp-label">📻 stand.fm</span>` +
     `<label class="rp-field">配信予定日 <input type="date" id="radioSchedDate" value="${date}"></label>` +
     (date ? `<span class="rp-wd">${radioFmtDate(date)}</span>` : "") +
-    `<label class="rp-field rp-check"><input type="checkbox" id="radioSchedReserved"${s.reserved ? " checked" : ""}> 予約済み</label>`;
+    `<label class="rp-field rp-check"><input type="checkbox" id="radioSchedReserved"${s.reserved ? " checked" : ""}> 予約済み</label>` +
+    `<label class="rp-field rp-check rp-rerec"><input type="checkbox" id="radioSchedRerecord"${s.rerecord ? " checked" : ""}> 再収録</label>`;
 }
 function radioScheduleSave(payload) {
   const id = RADIO_LIST[radioIdx].id;
   const prev = radioSchedule[id];
-  const cur = Object.assign({ date: "", reserved: false }, prev, payload);
-  if (!cur.date && !cur.reserved) delete radioSchedule[id]; else radioSchedule[id] = { date: cur.date, reserved: cur.reserved };
+  const cur = Object.assign({ date: "", reserved: false, rerecord: false }, prev, payload);
+  if (!cur.date && !cur.reserved && !cur.rerecord) delete radioSchedule[id]; else radioSchedule[id] = { date: cur.date, reserved: cur.reserved, rerecord: !!cur.rerecord };
   renderRadioPublished(); renderRadioSelect(); // 先に画面へ反映
   fetch("/api/radio-schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ cardId: id }, payload)) })
     .then(r => r.ok ? r.json() : Promise.reject(new Error("save")))
@@ -334,6 +336,7 @@ function radioScheduleSave(payload) {
 document.getElementById("radioPublished").addEventListener("change", e => {
   if (e.target.id === "radioSchedDate") radioScheduleSave({ date: e.target.value || "" });
   else if (e.target.id === "radioSchedReserved") radioScheduleSave({ reserved: e.target.checked });
+  else if (e.target.id === "radioSchedRerecord") radioScheduleSave({ rerecord: e.target.checked });
 });
 // ---- stand.fm投稿用テキスト（タイトル・カテゴリ・ハッシュタグ・放送の説明）。/api/radio-posts に保存 ----
 // カバー画像の下に表示。項目ごとにコピーでき、「直す」でその場で編集して保存できる。
