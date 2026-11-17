@@ -298,7 +298,7 @@ function renderRadioSelect() {
   });
 })();
 // 配信予定日と予約済み（stand.fm）。各回の上部から入力でき、/api/radio-schedule に保存する。
-let radioSchedule = {}; // { カードID: {date:"YYYY-MM-DD"|"", reserved:bool, rerecord:bool} }
+let radioSchedule = {}; // { カードID: {date:"YYYY-MM-DD"|"", reserved:bool, rerecord:bool, rerecordDate:"YYYY-MM-DD"} }
 function radioFmtDate(ymd) {
   const [y, m, d] = ymd.split("-").map(Number);
   return `${y}年${m}月${d}日（${"日月火水木金土"[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}）`;
@@ -316,13 +316,15 @@ function renderRadioPublished() {
     `<label class="rp-field">配信予定日 <input type="date" id="radioSchedDate" value="${date}"></label>` +
     (date ? `<span class="rp-wd">${radioFmtDate(date)}</span>` : "") +
     `<label class="rp-field rp-check"><input type="checkbox" id="radioSchedReserved"${s.reserved ? " checked" : ""}> 予約済み</label>` +
-    `<label class="rp-field rp-check rp-rerec"><input type="checkbox" id="radioSchedRerecord"${s.rerecord ? " checked" : ""}> 再収録</label>`;
+    `<label class="rp-field rp-check rp-rerec"><input type="checkbox" id="radioSchedRerecord"${s.rerecord ? " checked" : ""}> 再収録</label>` +
+    (s.rerecord && /^\d{4}-\d{2}-\d{2}$/.test(s.rerecordDate || "") ? `<span class="rp-wd">最新更新日 ${radioFmtDate(s.rerecordDate)}</span>` : "");
 }
 function radioScheduleSave(payload) {
   const id = RADIO_LIST[radioIdx].id;
   const prev = radioSchedule[id];
-  const cur = Object.assign({ date: "", reserved: false, rerecord: false }, prev, payload);
-  if (!cur.date && !cur.reserved && !cur.rerecord) delete radioSchedule[id]; else radioSchedule[id] = { date: cur.date, reserved: cur.reserved, rerecord: !!cur.rerecord };
+  const cur = Object.assign({ date: "", reserved: false, rerecord: false, rerecordDate: "" }, prev, payload);
+  if (payload.rerecord !== undefined && payload.rerecord !== !!(prev && prev.rerecord)) cur.rerecordDate = payload.rerecord ? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) : ""; // 先に画面へ出す仮の日付（確定はサーバー）
+  if (!cur.date && !cur.reserved && !cur.rerecord) delete radioSchedule[id]; else radioSchedule[id] = { date: cur.date, reserved: cur.reserved, rerecord: !!cur.rerecord, rerecordDate: cur.rerecord ? cur.rerecordDate : "" };
   renderRadioPublished(); renderRadioSelect(); // 先に画面へ反映
   fetch("/api/radio-schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ cardId: id }, payload)) })
     .then(r => r.ok ? r.json() : Promise.reject(new Error("save")))

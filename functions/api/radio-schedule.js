@@ -1,8 +1,8 @@
 // 「ラジオ」の回ごとの「配信予定日」と「予約済み」用API（旧「配信日」は廃止）。
 // 画面（各回の上部）から入力でき、Claudeに頼んでここへ記録することもできる。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "radio-schedule" のJSONで
-//   { "m00": { "date": "2026-10-28", "reserved": true, "rerecord": false, "updatedAt": "ISO日時" }, ... } の形で保存する。
-//   date は未定なら空文字。rerecord は「再収録が必要」のチェック。date・reserved・rerecord がすべて空の回は、エントリごと消す。
+//   { "m00": { "date": "2026-10-28", "reserved": true, "rerecord": false, "rerecordDate": "2026-11-17", "updatedAt": "ISO日時" }, ... } の形で保存する。
+//   date は未定なら空文字。rerecord は「再収録が必要」のチェック、rerecordDate は「最新更新日」（チェックした日をJSTで自動記録。チェックを外すと消える）。date・reserved・rerecord がすべて空の回は、エントリごと消す。
 // 台本・カバー画像とは別キー（それらの保存や更新番号に影響しない）。
 //
 //   GET  /api/radio-schedule                                → { schedule: {...} }
@@ -64,15 +64,21 @@ export async function onRequestPost(context) {
     let date = cur.date || "";
     let reserved = !!cur.reserved;
     let rerecord = !!cur.rerecord;
+    let rerecordDate = cur.rerecordDate || "";
     if (body.date !== undefined) {
       const d = body.date == null ? "" : String(body.date);
       if (d !== "" && !validDate(d)) return json({ ok: false, error: "invalid date (YYYY-MM-DD)" }, 400);
       date = d;
     }
     if (body.reserved !== undefined) reserved = body.reserved === true;
-    if (body.rerecord !== undefined) rerecord = body.rerecord === true;
+    if (body.rerecord !== undefined) {
+      const now = body.rerecord === true;
+      if (now && !rerecord) rerecordDate = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // チェックした日（JST）
+      if (!now) rerecordDate = "";
+      rerecord = now;
+    }
     if (!date && !reserved && !rerecord) delete data[cardId];
-    else data[cardId] = { date, reserved, rerecord, updatedAt: new Date().toISOString() };
+    else data[cardId] = { date, reserved, rerecord, rerecordDate: rerecord ? rerecordDate : "", updatedAt: new Date().toISOString() };
     await env.TAROT_KV.put(KEY, JSON.stringify(data));
     return json({ ok: true, schedule: data });
   } catch (err) {
