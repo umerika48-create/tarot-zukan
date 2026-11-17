@@ -24,7 +24,7 @@ APP = "https://tarot-zukan.pages.dev"
 PILL_TEXT = "現役占い師と学ぶ"
 TITLE = "丸暗記しないタロット入門"
 SUB = "（愚者の旅で読む大アルカナ）"
-SUB_MINOR = "（小アルカナ編）"   # スート紹介回（i-*）の副題。第27回以降の小アルカナ回は、まだ SUB のまま
+SUB_MINOR = "（小アルカナ編）"   # スート紹介回（i-*）と、小アルカナの各回（w/c/s/p＋番号）の副題
 INTRO_CARD_H = 760            # スート紹介回は、4枚並べなので、カードの絵を少し大きく
 
 def ensure_font():
@@ -77,7 +77,7 @@ def build(card_id, card_h=None, cx=None, cy=None, angle=None, angel_scale=None, 
         ds.text((x, 959), ch, font=f2, fill=(150, 30, 80, 140), anchor="lm"); dt.text((x, 954), ch, font=f2, fill="white", anchor="lm"); x += f2.getlength(ch) - 1
     f3 = ImageFont.truetype(FONT, 44)
     x = 50
-    for ch in (SUB_MINOR if card_id.startswith("i-") else SUB):
+    for ch in (SUB_MINOR if (card_id.startswith("i-") or card_id[:1] in "wcsp") else SUB):
         ds.text((x, 1027), ch, font=f3, fill=(150, 30, 80, 120), anchor="lm"); dt.text((x, 1024), ch, font=f3, fill="white", anchor="lm"); x += f3.getlength(ch) + 2
     sh = sh.filter(ImageFilter.GaussianBlur(3.5))
     res = Image.alpha_composite(Image.alpha_composite(base, sh), tx)
