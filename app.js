@@ -2905,6 +2905,9 @@ zukanVersionReady.then(() => fetch("/api/course-row-memos")).then(r => r.ok ? r.
   document.querySelectorAll(".course-program-item").forEach(r => r._refreshMemo && r._refreshMemo());
 }).catch(() => { if (window.OFFLINE_COURSE_ROW_MEMOS) courseRowMemos = window.OFFLINE_COURSE_ROW_MEMOS; });
 
+// 行の識別子：新しい行は rid、古い行（rid なし）は行の番号をそのまま使う（既存のMEMOと同じキー）
+function courseRowKey(item, idx) { return item && item.rid != null ? String(item.rid) : String(idx); }
+function newCourseRowId() { return "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 function setupRowMemo(row, courseId, idx) {
   const tag = row.querySelector(".cp-memo-tag");
   const area = row.querySelector(".cp-memo-area");
@@ -2922,7 +2925,7 @@ function setupRowMemo(row, courseId, idx) {
   });
   area.querySelector(".close").addEventListener("click", () => { area.classList.remove("show"); tag.classList.remove("open"); });
   area.querySelector(".save").addEventListener("click", () => {
-    zukanPost("/api/course-row-memos", { courseId, idx, text: ta.value }).then(d => {
+    zukanPost("/api/course-row-memos", { courseId, key: String(idx), text: ta.value }).then(d => {
       courseRowMemos = d.memos || {};
       row._refreshMemo();
       saved.textContent = "保存しました";
@@ -2970,7 +2973,7 @@ function openCourseDetail(course) {
           <div class="cp-memo-btns"><button type="button" class="save">保存</button><button type="button" class="close">閉じる</button><span class="cp-memo-saved"></span></div>
         </div>
       </div>`;
-    setupRowMemo(row, course.id, rowIdx);
+    setupRowMemo(row, course.id, courseRowKey(item, rowIdx));
     row.querySelectorAll(".course-program-time, .cp-title, .cp-desc").forEach(el => {
       el.classList.add("cp-tap");
       el.addEventListener("click", (e) => {
@@ -3068,7 +3071,10 @@ function saveCourseProgram(courseId, mutate) {
   if (!cur) return Promise.resolve(false);
   const course = JSON.parse(JSON.stringify(cur));
   course.program = course.program || [];
+  // まだ識別子のない行には、いまの番号をそのまま識別子にする（既存のMEMOが同じキーのまま付いてくる）
+  course.program.forEach((it, i) => { if (it.rid == null) it.rid = String(i); });
   mutate(course.program);
+  course.program.forEach(it => { if (it.rid == null) it.rid = newCourseRowId(); });
   return coursePost({ course, isNew: false }, "保存に失敗しました。通信状態を確認してもう一度お試しください。").then(ok => {
     if (!ok) return false;
     renderCourseList();
@@ -3148,10 +3154,11 @@ function addLabelEditor(container, label) {
   container.appendChild(item);
 }
 
-function addProgramRowEditor(item) {
+function addProgramRowEditor(item, rid) {
   const rows = document.getElementById("ceProgramRows");
   const row = document.createElement("div");
   row.className = "ce-row";
+  row.dataset.rid = rid || "";
   row.innerHTML = `
     <div class="ce-row-top">
       <input type="text" class="ce-input ce-time" placeholder="19:00〜19:05">
@@ -3187,7 +3194,7 @@ function openCourseEdit(course) {
   document.getElementById("ceSubtitle").value = course ? (course.subtitle || "") : "";
   document.getElementById("ceTags").value = course ? (course.tags || []).join("、") : "";
   document.getElementById("ceProgramRows").innerHTML = "";
-  if (course && course.program && course.program.length) course.program.forEach(addProgramRowEditor);
+  if (course && course.program && course.program.length) course.program.forEach((it, i) => addProgramRowEditor(it, courseRowKey(it, i)));
   else addProgramRowEditor(null);
 
   const delBtn = document.getElementById("ceDeleteBtn");
@@ -3216,6 +3223,7 @@ function collectCourseFromForm() {
       desc: row.querySelector(".ce-desc").value
     };
     if (labels.length) item.labels = labels;
+    item.rid = row.dataset.rid || newCourseRowId();
     if (item.time || item.title || item.desc) program.push(item);
   });
   return {
@@ -3742,6 +3750,7 @@ if (ZUKAN_IS_OFFLINE_FILE) {
   const backdrop = $("radioMemoBackdrop");
   let folders = [], notes = [], loaded = false, loadFailed = false;
   let curFolder = null;      // 一覧で開いているフォルダid（nullなら全体）
+  let listMode = "all";      // "all"=すべて / "ep"=いま開いている回のメモだけ
   let editing = null;        // 編集中のメモ {id, ...}
   let saveTimer = null, dirty = false;
 
@@ -3758,16 +3767,31 @@ if (ZUKAN_IS_OFFLINE_FILE) {
     }).catch(() => { loadFailed = true; });
   }
 
+  const curCardIdx = () => (typeof radioIdx !== "undefined" ? radioIdx : -1);
+  const cardIdxById = (id) => id ? CARDS.findIndex(c => c.id === id) : -1;
+  const epLabel = (i) => i >= 0 ? "第" + (i + 1) + "回 " + CARDS[i].name_jp : "";
+  // 左に出すカード：メモを回にひも付けていればその回、なければいま開いている回
+  function renderEditCard() {
+    const li = editing ? cardIdxById(editing.cardId) : -1;
+    const i = li >= 0 ? li : curCardIdx();
+    const c = i >= 0 ? CARDS[i] : null;
+    $("rmCard").style.display = c ? "" : "none";
+    if (c) $("rmCard").innerHTML = `<img src="${escHtml(c.img)}" alt="${escHtml(c.name_jp)}"><div class="rs-no">第${i + 1}回 / ${CARDS.length}</div><div class="rs-name">${escHtml(c.name_jp)}</div><div class="rs-en">${escHtml(c.name_en || "")}</div>`;
+  }
+  function refreshLink() {
+    const li = editing ? cardIdxById(editing.cardId) : -1;
+    const ci = li >= 0 ? li : curCardIdx();
+    $("rmLink").checked = li >= 0;
+    $("rmLinkText").textContent = ci >= 0 ? "この回（" + epLabel(ci) + "）のメモにする" : "";
+    $("rmLink").parentElement.style.display = ci >= 0 ? "" : "none";
+  }
   function show(which) {
     $("rmList").style.display = which === "list" ? "" : "none";
     $("rmEdit").style.display = which === "edit" ? "" : "none";
     const modal = backdrop.querySelector(".rm-modal");
     if (which === "edit") {
-      // いま開いているラジオの回のカードを、メモの左に大きく出す
-      const c = (typeof CARDS !== "undefined" && typeof radioIdx !== "undefined") ? CARDS[radioIdx] : null;
-      $("rmCard").style.display = c ? "" : "none";
-      if (c) $("rmCard").innerHTML = `<img src="${escHtml(c.img)}" alt="${escHtml(c.name_jp)}"><div class="rs-no">第${radioIdx + 1}回 / ${CARDS.length}</div><div class="rs-name">${escHtml(c.name_jp)}</div><div class="rs-en">${escHtml(c.name_en || "")}</div>`;
-      modal.classList.toggle("wide", !!c);
+      renderEditCard();
+      modal.classList.toggle("wide", $("rmCard").style.display !== "none");
     } else modal.classList.remove("wide");
   }
 
@@ -3783,7 +3807,8 @@ if (ZUKAN_IS_OFFLINE_FILE) {
     row.innerHTML = '<span class="rm-ic">&#128221;</span><div class="rm-main"><div class="rm-name"></div><div class="rm-sub"></div></div><span class="rm-count"></span>';
     row.querySelector(".rm-name").textContent = n.title || "（タイトルなし）";
     row.querySelector(".rm-sub").textContent = (n.text || "").replace(/\s+/g, " ").slice(0, 60);
-    row.querySelector(".rm-count").textContent = fmt(n.updatedAt);
+    const ni = cardIdxById(n.cardId);
+    row.querySelector(".rm-count").textContent = (ni >= 0 ? "第" + (ni + 1) + "回 · " : "") + fmt(n.updatedAt);
     row.addEventListener("click", () => openEdit(n));
     return row;
   }
@@ -3793,6 +3818,21 @@ if (ZUKAN_IS_OFFLINE_FILE) {
     const items = $("rmItems");
     items.innerHTML = "";
     $("rmBack").style.display = curFolder ? "" : "none";
+    // 上のチップ：「すべて」と「いま開いている回のメモ」
+    const chips = $("rmChips"), ci = curCardIdx();
+    chips.innerHTML = "";
+    const epId = ci >= 0 ? CARDS[ci].id : "";
+    const epCount = epId ? notes.filter(n => n.cardId === epId).length : 0;
+    if (!curFolder && epId) {
+      [["all", "すべて"], ["ep", "第" + (ci + 1) + "回のメモ（" + epCount + "）"]].forEach(([m, label]) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "rm-chip" + (listMode === m ? " on" : ""); b.textContent = label;
+        b.addEventListener("click", () => { listMode = m; renderList(); });
+        chips.appendChild(b);
+      });
+      chips.style.display = "";
+    } else chips.style.display = "none";
+    const epOnly = !curFolder && epId && listMode === "ep";
     const cur = folders.find(f => f.id === curFolder);
     $("rmHead").textContent = cur ? "📁 " + cur.name : "ラジオのメモ";
     $("rmAddFolder").style.display = curFolder ? "none" : "";
@@ -3800,7 +3840,7 @@ if (ZUKAN_IS_OFFLINE_FILE) {
     msg("");
     const sorted = (arr) => arr.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     let count = 0;
-    if (!curFolder) {
+    if (!curFolder && !epOnly) {
       folders.forEach(f => {
         const c = notes.filter(n => n.folderId === f.id).length;
         const row = document.createElement("div");
@@ -3824,7 +3864,8 @@ if (ZUKAN_IS_OFFLINE_FILE) {
         count++;
       });
     }
-    sorted(notes.filter(n => (n.folderId || "") === (curFolder || ""))).forEach(n => { items.appendChild(noteRow(n)); count++; });
+    const shown = epOnly ? notes.filter(n => n.cardId === epId) : notes.filter(n => (n.folderId || "") === (curFolder || ""));
+    sorted(shown).forEach(n => { items.appendChild(noteRow(n)); count++; });
     $("rmEmpty").style.display = count ? "none" : "block";
   }
 
@@ -3851,11 +3892,12 @@ if (ZUKAN_IS_OFFLINE_FILE) {
   }
 
   function openEdit(n) {
-    editing = n ? Object.assign({}, n) : { id: newId(), folderId: curFolder || "", title: "", text: "", isNew: true };
+    editing = n ? Object.assign({}, n) : { id: newId(), folderId: curFolder || "", cardId: curCardIdx() >= 0 ? CARDS[curCardIdx()].id : "", title: "", text: "", isNew: true };
     $("rmHead").textContent = n ? "メモを編集" : "新しいメモ";
     $("rmTitle").value = editing.title || "";
     $("rmText").value = editing.text || "";
     fillFolderSelect(editing.folderId);
+    refreshLink();
     $("rmStatus").textContent = "";
     $("rmDelNote").style.display = n ? "" : "none";
     dirty = false;
@@ -3867,7 +3909,7 @@ if (ZUKAN_IS_OFFLINE_FILE) {
   function saveNow() {
     clearTimeout(saveTimer);
     if (!editing || !dirty) return Promise.resolve(true);
-    const note = { id: editing.id, folderId: $("rmFolder").value, title: $("rmTitle").value.trim(), text: $("rmText").value };
+    const note = { id: editing.id, folderId: $("rmFolder").value, cardId: editing.cardId || "", title: $("rmTitle").value.trim(), text: $("rmText").value };
     if (!note.title && !note.text.trim() && editing.isNew) { dirty = false; return Promise.resolve(true); }
     dirty = false;
     $("rmStatus").textContent = "保存中…";
@@ -3888,6 +3930,12 @@ if (ZUKAN_IS_OFFLINE_FILE) {
 
   function touch() { dirty = true; $("rmStatus").textContent = ""; clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 700); }
   ["rmTitle", "rmText", "rmFolder"].forEach(id => $(id).addEventListener("input", touch));
+  $("rmLink").addEventListener("change", () => {
+    if (!editing) return;
+    const ci = curCardIdx();
+    editing.cardId = $("rmLink").checked && ci >= 0 ? CARDS[ci].id : "";
+    refreshLink(); renderEditCard(); touch();
+  });
   $("rmFolder").addEventListener("change", touch);
   $("rmText").addEventListener("input", grow);
 
@@ -3895,7 +3943,7 @@ if (ZUKAN_IS_OFFLINE_FILE) {
     saveNow().then(() => {
       const f = editing && $("rmFolder").value;
       editing = null;
-      if (f !== undefined && f !== null && f !== "") curFolder = f; else curFolder = null;
+      if (listMode !== "ep" && f !== undefined && f !== null && f !== "") curFolder = f; else curFolder = null;
       renderList();
     });
   }
@@ -3917,11 +3965,12 @@ if (ZUKAN_IS_OFFLINE_FILE) {
 
   function open() {
     backdrop.classList.remove("hidden");
-    editing = null; curFolder = null;
+    editing = null; curFolder = null; listMode = "all";
     show("list"); msg("");
     $("rmItems").innerHTML = ""; $("rmEmpty").style.display = "none";
-    if (!loaded) { msg("読み込み中…"); load().then(() => { msg(""); renderList(); }); }
-    else { renderList(); load().then(() => { if (editing === null) renderList(); }); }
+    const pickMode = () => { const i = curCardIdx(); listMode = i >= 0 && notes.some(n => n.cardId === CARDS[i].id) ? "ep" : "all"; };
+    if (!loaded) { msg("読み込み中…"); load().then(() => { msg(""); pickMode(); renderList(); }); }
+    else { pickMode(); renderList(); load().then(() => { if (editing === null) renderList(); }); }
   }
   function close() {
     saveNow().then(() => { editing = null; backdrop.classList.add("hidden"); });

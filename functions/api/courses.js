@@ -39,6 +39,8 @@ function cleanCourse(input) {
       desc: str(p.desc, 3000)
     };
     if (labels.length) item.labels = labels;
+    // 行の識別子（MEMOをこの行にひも付けるためのもの。並べ替え・削除でもずれない）
+    if (p.rid != null && /^[A-Za-z0-9_-]{1,32}$/.test(String(p.rid))) item.rid = String(p.rid);
     return item;
   }).filter(p => p.time || p.title || p.desc);
 

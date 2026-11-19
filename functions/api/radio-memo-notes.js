@@ -1,6 +1,6 @@
 // ラジオ専用メモ本体(クラウド保存)用API。「記録」タブのメモ(memo-notes)とは別データ。
 // データはCloudflare KV (binding: TAROT_KV) に、キー "radio-memo-notes" の配列として
-// [ {"id":"...", "folderId":"...", "title":"...", "subtitle":"...", "text":"...", "updatedAt":数値}, ... ]
+// [ {"id":"...", "folderId":"...", "cardId":"...", "title":"...", "subtitle":"...", "text":"...", "updatedAt":数値}, ... ]
 // の形でまとめて保存する。
 //
 // 保存の直前に「他の端末で先に更新されていないか」を確認する(functions/api/_version-guard.js)。
@@ -25,6 +25,8 @@ function cleanNote(input) {
   input = input || {};
   return {
     folderId: String(input.folderId || "").slice(0, 64),
+    // ひも付けたラジオの回（カードID。空ならどの回にも付けない）
+    cardId: /^[A-Za-z0-9_-]{1,32}$/.test(String(input.cardId || "")) ? String(input.cardId) : "",
     title: String(input.title || "").slice(0, 300),
     subtitle: String(input.subtitle || "").slice(0, 300),
     text: String(input.text || "").slice(0, 50000)
